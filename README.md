@@ -1,5 +1,12 @@
 # Getting Started with Create React App
 
+## Live job search with TheirStack
+
+The Find jobs and Internships pages call `/api/jobs`, a serverless endpoint in `api/jobs.js`.
+Deploy this project to Vercel (or adapt that endpoint to your server) and add `THEIRSTACK_API_KEY` in the hosting provider's server-side environment variables. Never place this key in a `REACT_APP_` variable because that would expose it to every browser.
+
+Until the key is configured, the endpoint returns a small demo feed so the experience remains usable. The search interface accepts Zimbabwe, Remote, or any location the TheirStack data source supports.
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
