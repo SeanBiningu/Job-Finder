@@ -2,7 +2,7 @@
 create extension if not exists "uuid-ossp";
 
 create type public.user_role as enum ('candidate', 'employer', 'admin');
-create type public.job_type as enum ('full_time', 'part_time', 'internship', 'graduate', 'contract');
+create type public.job_type as enum ('full_time', 'part_time', 'internship', 'apprenticeship', 'graduate', 'contract');
 create type public.application_status as enum ('submitted', 'reviewing', 'interview', 'offer', 'rejected');
 
 create table public.profiles (

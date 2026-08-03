@@ -3,6 +3,8 @@ const fallback = [
   { id: 'demo-1', logo: 'N', color: '#fff2e9', text: '#ff7752', company: 'Notion', role: 'Junior Product Designer', type: 'Full-time', place: 'Remote', time: '2d ago', salary: '$48-60k', tags: ['Figma', 'UI Design'], match: '94% match' },
   { id: 'demo-2', logo: 'M', color: '#f1edff', text: '#7662d7', company: 'Monzo', role: 'Graduate Data Analyst', type: 'Graduate', place: 'London, UK', time: '1d ago', salary: 'GBP 32-38k', tags: ['SQL', 'Python'], match: '89% match' },
   { id: 'demo-3', logo: 'Z', color: '#e6f6ef', text: '#16865d', company: 'ZimSwitch', role: 'Software Engineering Intern', type: 'Internship', place: 'Harare, Zimbabwe', time: 'Today', salary: 'Paid', tags: ['React', 'JavaScript'], match: '90% match' },
+  { id: 'demo-4', logo: 'B', color: '#e8f4fd', text: '#2d7bb8', company: 'BT Group', role: 'Software Developer Apprentice', type: 'Apprenticeship', place: 'London, UK', time: '2d ago', salary: 'GBP 18-22k', tags: ['JavaScript', 'Cloud'], match: '88% match' },
+  { id: 'demo-5', logo: 'D', color: '#fef3e7', text: '#c8762d', company: 'Deloitte', role: 'Business Analyst Apprentice', type: 'Apprenticeship', place: 'Harare, Zimbabwe', time: '1d ago', salary: 'Paid training', tags: ['Excel', 'Analysis'], match: '85% match' },
 ];
 
 const normalize = (job, index) => ({
@@ -25,14 +27,16 @@ export default async function handler(req, res) {
   const query = String(req.query.query || '').trim();
   const location = String(req.query.location || '').trim();
   const internshipOnly = req.query.internship === 'true';
+  const apprenticeshipOnly = req.query.apprenticeship === 'true';
   if (!process.env.THEIRSTACK_API_KEY) {
     const needle = `${query} ${location}`.toLowerCase();
-    const jobs = fallback.filter(job => (!internshipOnly || job.type === 'Internship') && (!needle || `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(needle)));
+    const jobs = fallback.filter(job => (!internshipOnly || job.type === 'Internship') && (!apprenticeshipOnly || job.type === 'Apprenticeship') && (!needle || `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(needle)));
     return res.status(200).json({ jobs, source: 'demo', message: 'Add THEIRSTACK_API_KEY to enable live results.' });
   }
   try {
     const body = { page: 0, limit: 25, job_title_or: query ? [query] : undefined, location_or: location ? [location] : ['Zimbabwe', 'Remote'] };
     if (internshipOnly) body.job_title_or = query ? [query, 'intern', 'internship'] : ['intern', 'internship'];
+    if (apprenticeshipOnly) body.job_title_or = query ? [query, 'apprentice', 'apprenticeship'] : ['apprentice', 'apprenticeship'];
     const response = await fetch('https://api.theirstack.com/v1/jobs/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.THEIRSTACK_API_KEY}`, 'X-API-Key': process.env.THEIRSTACK_API_KEY },

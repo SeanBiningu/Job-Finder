@@ -15,10 +15,18 @@ const Icon = ({ name, size = 20 }) => {
 const jobs = [
   { id: 1, logo: 'N', color: '#fff2e9', text: '#ff7752', company: 'Notion', role: 'Junior Product Designer', type: 'Full-time', place: 'Remote', time: '2d ago', salary: '$48-60k', tags: ['Figma', 'UI Design'], match: '94% match' },
   { id: 2, logo: 'M', color: '#f1edff', text: '#7662d7', company: 'Monzo', role: 'Graduate Data Analyst', type: 'Graduate', place: 'London, UK', time: '1d ago', salary: 'GBP 32-38k', tags: ['SQL', 'Python'], match: '89% match' },
-  { id: 3, logo: 'S', color: '#e6f6ef', text: '#16865d', company: 'Spotify', role: 'Marketing Intern', type: 'Internship', place: 'Remote', time: '3d ago', salary: 'Paid', tags: ['Content', 'Social'], match: '86% match' },
+  { id: 3, logo: 'S', color: '#e6f6ef', text: '#16865d', company: 'Spotify', role: 'Marketing Intern', type: 'Internship', place: 'Remote', time: '3d ago', salary: 'Paid', tags: ['Content', 'Social'], match: '86% match', noExpNeeded: true },
   { id: 4, logo: 'C', color: '#eaf2ff', text: '#4b7fd3', company: 'Canva', role: 'Junior Front-end Developer', type: 'Full-time', place: 'Remote', time: '5h ago', salary: '$52-66k', tags: ['React', 'JavaScript'], match: '91% match' },
-  { id: 5, logo: 'A', color: '#fff0df', text: '#e47b3d', company: 'Airbnb', role: 'Community Operations Intern', type: 'Internship', place: 'Dublin, IE', time: '1d ago', salary: 'EUR 1,800/mo', tags: ['Support', 'Operations'], match: '82% match' },
-  { id: 6, logo: 'H', color: '#f1ecff', text: '#8569c9', company: 'HubSpot', role: 'Associate Account Executive', type: 'Entry level', place: 'Remote', time: '4d ago', salary: '$45-55k', tags: ['Sales', 'CRM'], match: '78% match' },
+  { id: 5, logo: 'A', color: '#fff0df', text: '#e47b3d', company: 'Airbnb', role: 'Community Operations Intern', type: 'Internship', place: 'Dublin, IE', time: '1d ago', salary: 'EUR 1,800/mo', tags: ['Support', 'Operations'], match: '82% match', noExpNeeded: true },
+  { id: 6, logo: 'H', color: '#f1ecff', text: '#8569c9', company: 'HubSpot', role: 'Associate Account Executive', type: 'Entry level', place: 'Remote', time: '4d ago', salary: '$45-55k', tags: ['Sales', 'CRM'], match: '78% match', noExpNeeded: true },
+  { id: 7, logo: 'B', color: '#e8f4fd', text: '#2d7bb8', company: 'BT Group', role: 'Software Developer Apprentice', type: 'Apprenticeship', place: 'London, UK', time: '2d ago', salary: 'GBP 18-22k', tags: ['JavaScript', 'Cloud'], match: '88% match', noExpNeeded: true },
+  { id: 8, logo: 'D', color: '#fef3e7', text: '#c8762d', company: 'Deloitte', role: 'Business Analyst Apprentice', type: 'Apprenticeship', place: 'Harare, Zimbabwe', time: '1d ago', salary: 'Paid training', tags: ['Excel', 'Analysis'], match: '85% match', noExpNeeded: true },
+  { id: 9,  logo: 'T', color: '#e9f7f2', text: '#1a8a6d', company: 'TikTok', role: 'Content Moderator Trainee', type: 'Entry level', place: 'Remote', time: '6h ago', salary: '$18-22/hr', tags: ['Attention', 'Communication'], match: '90% match', noExpNeeded: true },
+  { id: 10, logo: 'G', color: '#fff5e5', text: '#d4831a', company: 'Grubhub', role: 'Customer Support Representative', type: 'Entry level', place: 'Remote', time: '12h ago', salary: '$16-20/hr', tags: ['Customer Service', 'Chat'], match: '87% match', noExpNeeded: true },
+  { id: 11, logo: 'Z', color: '#f0ecff', text: '#6a58c8', company: 'Zapier', role: 'Community Forum Moderator', type: 'Volunteer', place: 'Remote', time: '2d ago', salary: 'Unpaid / remote', tags: ['Communication', 'Tech'], match: '80% match', noExpNeeded: true },
+  { id: 12, logo: 'L', color: '#e8f5fe', text: '#2077b9', company: 'LinkedIn', role: 'Data Entry Associate', type: 'Entry level', place: 'Remote', time: '3d ago', salary: '$15-18/hr', tags: ['Excel', 'Detail'], match: '83% match', noExpNeeded: true },
+  { id: 13, logo: 'U', color: '#f5ffe8', text: '#3a8a32', company: 'Upwork', role: 'Freelance Writing (Beginner)', type: 'Freelance', place: 'Remote', time: '1d ago', salary: 'Project-based', tags: ['Writing', 'Research'], match: '76% match', noExpNeeded: true },
+  { id: 14, logo: 'R', color: '#fff0f5', text: '#c84a7a', company: 'Red Cross', role: 'Volunteer Coordinator Trainee', type: 'Volunteer', place: 'Harare, Zimbabwe', time: '4d ago', salary: 'Volunteer', tags: ['Organisation', 'People'], match: '88% match', noExpNeeded: true },
 ];
 
 function JobCard({ job, saved, applied, onSave, onApply }) {
@@ -35,13 +43,94 @@ function Discover({ setActive, notify }) {
   </>;
 }
 
-function BrowseJobs({ internshipOnly, saved, applications, onSave, onApply }) {
-  const [query, setQuery] = useState(''); const [location, setLocation] = useState(internshipOnly ? 'Zimbabwe' : 'Zimbabwe, Remote'); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [liveJobs, setLiveJobs] = useState(jobs); const [searching, setSearching] = useState(false); const [source, setSource] = useState('sample'); const [error, setError] = useState('');
-  const displayed = useMemo(() => liveJobs.filter(job => (!internshipOnly || job.type === 'Internship') && (type === 'All' || job.type === type) && (!remote || job.place === 'Remote') && `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [internshipOnly, type, remote, query, liveJobs]);
-  const filters = internshipOnly ? ['All', 'Remote', 'Marketing', 'Tech'] : ['All', 'Full-time', 'Graduate', 'Entry level'];
+function BrowseJobs({ internshipOnly, apprenticeshipOnly, saved, applications, onSave, onApply }) {
+  const categoryOnly = internshipOnly ? 'Internship' : apprenticeshipOnly ? 'Apprenticeship' : null;
+  const [query, setQuery] = useState(''); const [location, setLocation] = useState(categoryOnly ? 'Zimbabwe' : 'Zimbabwe, Remote'); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [liveJobs, setLiveJobs] = useState(jobs); const [searching, setSearching] = useState(false); const [source, setSource] = useState('sample'); const [error, setError] = useState('');
+  const displayed = useMemo(() => liveJobs.filter(job => (!categoryOnly || job.type === categoryOnly) && (type === 'All' || job.type === type) && (!remote || job.place === 'Remote') && `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [categoryOnly, type, remote, query, liveJobs]);
+  const filters = internshipOnly ? ['All', 'Remote', 'Marketing', 'Tech'] : apprenticeshipOnly ? ['All', 'Remote', 'Tech', 'Business'] : ['All', 'Full-time', 'Graduate', 'Entry level'];
+  const hero = internshipOnly
+    ? { eyebrow: 'Learn by doing', title: 'Internships that open doors.', copy: 'Paid placements and early experience with teams ready to help you grow.', placeholder: 'Search internship, skill or company' }
+    : apprenticeshipOnly
+      ? { eyebrow: 'Earn while you learn', title: 'Apprenticeships that build real skills.', copy: 'Structured training with employers committed to your development.', placeholder: 'Search apprenticeship, skill or company' }
+      : { eyebrow: 'Job search', title: 'Find your next opportunity.', copy: 'Search entry-level roles in Zimbabwe and around the world.', placeholder: 'Search job title, skill or company' };
   const setFilter = filter => { if (filter === 'Remote') setRemote(!remote); else { setType(filter); setRemote(false); } };
-  const runSearch = async () => { setSearching(true); setError(''); try { const result = await searchJobs({ query, location, internshipOnly }); setLiveJobs(result.jobs); setSource(result.source); } catch (err) { setError('We could not reach the live job feed. Please try again.'); } finally { setSearching(false); } };
-  return <section className="browse-page"><div className="browse-hero"><span className="eyebrow">{internshipOnly ? 'Learn by doing' : 'Job search'}</span><h1>{internshipOnly ? 'Internships that open doors.' : 'Find your next opportunity.'}</h1><p>{internshipOnly ? 'Paid placements and early experience with teams ready to help you grow.' : 'Search entry-level roles in Zimbabwe and around the world.'}</p><div className="browse-search"><Icon name="search"/><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder={internshipOnly ? 'Search internship, skill or company' : 'Search job title, skill or company'}/><Icon name="map"/><input className="location-search" value={location} onChange={e => setLocation(e.target.value)} placeholder="Zimbabwe, Remote or anywhere"/><button onClick={runSearch} disabled={searching}>{searching ? 'Searching...' : 'Search'}</button></div></div><div className="results-shell"><aside className="filter-panel"><b>Refine your search</b><div className="filter-group"><span>Role type</span>{filters.map(filter => <button key={filter} onClick={() => setFilter(filter)} className={(type === filter || (filter === 'Remote' && remote)) ? 'filter-choice checked' : 'filter-choice'}>{filter === 'Remote' ? 'Remote only' : filter}<i/></button>)}</div><div className="filter-group"><span>Experience</span><button className="filter-choice">No experience needed<i/></button><button className="filter-choice">0-2 years<i/></button></div></aside><div className="search-results"><div className="results-title"><div><h2>{displayed.length} opportunities found</h2><p>{source === 'theirstack' ? 'Live results powered by TheirStack.' : source === 'demo' ? 'Demo feed - add a TheirStack key for live results.' : 'Matches based on your profile and search.'}</p></div><button className="sort-button">Most relevant</button></div>{error && <div className="search-error">{error}</div>}<div className="jobs-list">{displayed.length ? displayed.map(job => <JobCard key={job.id} job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>) : <div className="empty">No opportunities match these filters. Try changing your search.</div>}</div></div></div></section>;
+  const runSearch = async () => { setSearching(true); setError(''); try { const result = await searchJobs({ query, location, internshipOnly, apprenticeshipOnly }); setLiveJobs(result.jobs); setSource(result.source); } catch (err) { setError('We could not reach the live job feed. Please try again.'); } finally { setSearching(false); } };
+  return <section className="browse-page"><div className="browse-hero"><span className="eyebrow">{hero.eyebrow}</span><h1>{hero.title}</h1><p>{hero.copy}</p><div className="browse-search"><Icon name="search"/><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder={hero.placeholder}/><Icon name="map"/><input className="location-search" value={location} onChange={e => setLocation(e.target.value)} placeholder="Zimbabwe, Remote or anywhere"/><button onClick={runSearch} disabled={searching}>{searching ? 'Searching...' : 'Search'}</button></div></div><div className="results-shell"><aside className="filter-panel"><b>Refine your search</b><div className="filter-group"><span>Role type</span>{filters.map(filter => <button key={filter} onClick={() => setFilter(filter)} className={(type === filter || (filter === 'Remote' && remote)) ? 'filter-choice checked' : 'filter-choice'}>{filter === 'Remote' ? 'Remote only' : filter}<i/></button>)}</div><div className="filter-group"><span>Experience</span><button className="filter-choice">No experience needed<i/></button><button className="filter-choice">0-2 years<i/></button></div></aside><div className="search-results"><div className="results-title"><div><h2>{displayed.length} opportunities found</h2><p>{source === 'theirstack' ? 'Live results powered by TheirStack.' : source === 'demo' ? 'Demo feed - add a TheirStack key for live results.' : 'Matches based on your profile and search.'}</p></div><button className="sort-button">Most relevant</button></div>{error && <div className="search-error">{error}</div>}<div className="jobs-list">{displayed.length ? displayed.map(job => <JobCard key={job.id} job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>) : <div className="empty">No opportunities match these filters. Try changing your search.</div>}</div></div></div></section>;
+}
+
+function NoExpNeeded({ saved, applications, onSave, onApply }) {
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const noExpJobs = jobs.filter(j => j.noExpNeeded);
+  const displayed = useMemo(() =>
+    noExpJobs.filter(job =>
+      (typeFilter === 'All' || job.type === typeFilter) &&
+      (!remoteOnly || job.place === 'Remote') &&
+      `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())
+    ),
+    [typeFilter, remoteOnly, query]
+  );
+  const setFilter = f => { if (f === 'Remote') setRemoteOnly(r => !r); else { setTypeFilter(f); setRemoteOnly(false); } };
+  const filters = ['All', 'Entry level', 'Internship', 'Apprenticeship', 'Volunteer', 'Freelance', 'Remote'];
+  return (
+    <section className="browse-page">
+      <div className="noexp-hero">
+        <span className="eyebrow"><Icon name="spark" size={13}/> Zero barrier entry</span>
+        <h1>No qualifications.<br/><em>No experience.</em><br/>Just opportunity.</h1>
+        <p>Every role here welcomes you exactly as you are. No CV gap anxiety, no degree required — just the drive to start.</p>
+        <div className="noexp-badges">
+          <span><Icon name="check" size={13}/> No degree required</span>
+          <span><Icon name="check" size={13}/> No prior work history needed</span>
+          <span><Icon name="check" size={13}/> Training provided on the job</span>
+        </div>
+        <div className="browse-search" style={{ marginTop: '22px', maxWidth: '620px' }}>
+          <Icon name="search"/>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search role, skill or company"/>
+        </div>
+      </div>
+      <div className="results-shell">
+        <aside className="filter-panel">
+          <b>Filter roles</b>
+          <div className="filter-group">
+            <span>Role type</span>
+            {filters.map(f => (
+              <button key={f} onClick={() => setFilter(f)} className={(typeFilter === f || (f === 'Remote' && remoteOnly)) ? 'filter-choice checked' : 'filter-choice'}>
+                {f === 'Remote' ? 'Remote only' : f}<i/>
+              </button>
+            ))}
+          </div>
+          <div className="noexp-callout">
+            <Icon name="spark" size={15}/>
+            <div>
+              <b>Fresh start guarantee</b>
+              <small>Every listing here is verified to require zero prior experience or formal qualifications.</small>
+            </div>
+          </div>
+        </aside>
+        <div className="search-results">
+          <div className="results-title">
+            <div>
+              <h2>{displayed.length} zero-barrier roles</h2>
+              <p>Curated jobs that open doors — no experience necessary.</p>
+            </div>
+            <button className="sort-button">Most relevant</button>
+          </div>
+          <div className="jobs-list">
+            {displayed.length
+              ? displayed.map(job => (
+                  <div key={job.id} className="noexp-card-wrap">
+                    <span className="noexp-badge-pill"><Icon name="check" size={11}/> No experience needed</span>
+                    <JobCard job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>
+                  </div>
+                ))
+              : <div className="empty">No roles match these filters. Try broadening your search.</div>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function Applications({ applications, setActive }) {
@@ -83,12 +172,12 @@ function ProfileModal({ profile, onClose, onSave }) {
 
 function App() {
   const [active, setActive] = useState('Discover'); const [saved, setSaved] = useState([]); const [applications, setApplications] = useState([]); const [toast, setToast] = useState(''); const [selectedJob, setSelectedJob] = useState(null); const [signedIn, setSignedIn] = useState(true); const [notificationsOpen, setNotificationsOpen] = useState(false); const [accountOpen, setAccountOpen] = useState(false); const [profileOpen, setProfileOpen] = useState(false); const [profile, setProfile] = useState({ name: 'Alex Morgan', email: 'alex@example.com', headline: 'Early-career product designer', location: 'Harare, Zimbabwe' });
-  const nav = ['Discover', 'Find jobs', 'Internships', 'My applications', 'Resumly.ai']; const notify = message => { setToast(message); setTimeout(() => setToast(''), 2300); };
+  const nav = ['Discover', 'Find jobs', 'No Experience Needed', 'Internships', 'Apprenticeships', 'My applications', 'Resumly.ai']; const notify = message => { setToast(message); setTimeout(() => setToast(''), 2300); };
   const save = id => { setSaved(current => current.includes(id) ? current.filter(savedId => savedId !== id) : [...current, id]); notify(saved.includes(id) ? 'Job removed from saved roles' : 'Job saved to your list'); };
   const apply = job => { if (applications.some(app => app.id === job.id)) return notify('You have already applied for this role'); setSelectedJob(job); };
   const submitApplication = (job) => { setApplications(current => [...current, { ...job, status: current.length === 1 ? 'Interview' : 'Reviewing' }]); setSelectedJob(null); notify(`Application sent to ${job.company}`); };
   if (!signedIn) return <AuthPage onSignIn={details => { setProfile(current => ({ ...current, ...details })); setSignedIn(true); notify('Welcome to Workly'); }} />;
-  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => setActive('Discover')}><span className="brand-mark">w</span><span>workly</span></button><nav>{nav.map(item => <button key={item} className={active === item ? 'nav-item active' : 'nav-item'} onClick={() => setActive(item)}>{item}</button>)}</nav><div className="top-actions"><div className="header-popover"><button className="icon-button" onClick={() => { setNotificationsOpen(!notificationsOpen); setAccountOpen(false); }}><Icon name="bell" size={19}/><i/></button>{notificationsOpen && <div className="notification-panel"><b>Notifications</b><button onClick={() => setActive('My applications')}><span className="notice-dot"/>Your application progress is ready to view<small>Just now</small></button><button onClick={() => setActive('Resumly.ai')}><span className="notice-dot"/>Resumly.ai found 2 CV improvements<small>Today</small></button><button onClick={() => { setNotificationsOpen(false); notify('Notifications marked as read'); }}>Mark all as read</button></div>}</div><div className="header-popover"><button className="avatar" onClick={() => { setAccountOpen(!accountOpen); setNotificationsOpen(false); }}>{profile.name.split(' ').map(word => word[0]).join('').slice(0,2)}</button>{accountOpen && <div className="account-menu"><div><b>{profile.name}</b><small>{profile.email}</small></div><button onClick={() => { setAccountOpen(false); setProfileOpen(true); }}>Profile settings</button><button onClick={() => { setAccountOpen(false); setActive('My applications'); }}>My applications</button><button className="logout" onClick={() => { setSignedIn(false); setAccountOpen(false); }}>Log out</button></div>}</div><button className="employer-button" onClick={() => notify('Employer dashboard opened')}><Icon name="grid" size={17}/> For employers</button></div></header><main>{active === 'Discover' && <Discover setActive={setActive} notify={notify}/>} {active === 'Find jobs' && <BrowseJobs saved={saved} applications={applications} onSave={save} onApply={apply}/>} {active === 'Internships' && <BrowseJobs internshipOnly saved={saved} applications={applications} onSave={save} onApply={apply}/>} {active === 'My applications' && <Applications applications={applications} setActive={setActive}/>} {active === 'Resumly.ai' && <Resumly setActive={setActive} notify={notify}/>}</main><ApplicationModal job={selectedJob} onClose={() => setSelectedJob(null)} onSubmit={submitApplication} onAudit={() => { setSelectedJob(null); setActive('Resumly.ai'); }}/>{profileOpen && <ProfileModal profile={profile} onClose={() => setProfileOpen(false)} onSave={details => { setProfile(current => ({ ...current, ...details })); setProfileOpen(false); notify('Profile settings saved'); }}/>} {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}</div>;
+  return <div className="app-shell"><header className="topbar"><button className="brand" onClick={() => setActive('Discover')}><span className="brand-mark">w</span><span>workly</span></button><nav>{nav.map(item => <button key={item} className={active === item ? (item === 'No Experience Needed' ? 'nav-item active nav-item-noexp' : 'nav-item active') : (item === 'No Experience Needed' ? 'nav-item nav-item-noexp' : 'nav-item')} onClick={() => setActive(item)}>{item}</button>)}</nav><div className="top-actions"><div className="header-popover"><button className="icon-button" onClick={() => { setNotificationsOpen(!notificationsOpen); setAccountOpen(false); }}><Icon name="bell" size={19}/><i/></button>{notificationsOpen && <div className="notification-panel"><b>Notifications</b><button onClick={() => setActive('My applications')}><span className="notice-dot"/>Your application progress is ready to view<small>Just now</small></button><button onClick={() => setActive('Resumly.ai')}><span className="notice-dot"/>Resumly.ai found 2 CV improvements<small>Today</small></button><button onClick={() => { setNotificationsOpen(false); notify('Notifications marked as read'); }}>Mark all as read</button></div>}</div><div className="header-popover"><button className="avatar" onClick={() => { setAccountOpen(!accountOpen); setNotificationsOpen(false); }}>{profile.name.split(' ').map(word => word[0]).join('').slice(0,2)}</button>{accountOpen && <div className="account-menu"><div><b>{profile.name}</b><small>{profile.email}</small></div><button onClick={() => { setAccountOpen(false); setProfileOpen(true); }}>Profile settings</button><button onClick={() => { setAccountOpen(false); setActive('My applications'); }}>My applications</button><button className="logout" onClick={() => { setSignedIn(false); setAccountOpen(false); }}>Log out</button></div>}</div><button className="employer-button" onClick={() => notify('Employer dashboard opened')}><Icon name="grid" size={17}/> For employers</button></div></header><main>{active === 'Discover' && <Discover setActive={setActive} notify={notify}/>} {active === 'Find jobs' && <BrowseJobs saved={saved} applications={applications} onSave={save} onApply={apply}/>} {active === 'No Experience Needed' && <NoExpNeeded saved={saved} applications={applications} onSave={save} onApply={apply}/>} {active === 'Internships' && <BrowseJobs internshipOnly saved={saved} applications={applications} onSave={save} onApply={apply}/>} {active === 'Apprenticeships' && <BrowseJobs apprenticeshipOnly saved={saved} applications={applications} onSave={save} onApply={apply}/>} {active === 'My applications' && <Applications applications={applications} setActive={setActive}/>} {active === 'Resumly.ai' && <Resumly setActive={setActive} notify={notify}/>}</main><ApplicationModal job={selectedJob} onClose={() => setSelectedJob(null)} onSubmit={submitApplication} onAudit={() => { setSelectedJob(null); setActive('Resumly.ai'); }}/>{profileOpen && <ProfileModal profile={profile} onClose={() => setProfileOpen(false)} onSave={details => { setProfile(current => ({ ...current, ...details })); setProfileOpen(false); notify('Profile settings saved'); }}/>} {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}</div>;
 }
 
 export default App;
