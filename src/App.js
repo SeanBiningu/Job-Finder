@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import './App.css';
 import { searchJobs } from './services/jobSearch';
 
@@ -180,14 +180,348 @@ function DiscoverOverview({ setActive }) {
 }
 
 function ATSCheckers({ profile, onApply, notify }) {
-  const [targetRole, setTargetRole] = useState(''); const [summary, setSummary] = useState(''); const [consent, setConsent] = useState(false); const [selectedJobId, setSelectedJobId] = useState(String(jobs[0].id));
+  const [targetRole, setTargetRole] = useState('');
+  const [summary, setSummary] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState(String(jobs[0].id));
+
+  // ── Shared file state (used by BOTH CV builder and ATS checker) ──
+  const [sharedFile, setSharedFile] = useState(null);
+
+  // CV Builder upload state
+  const [cvBuilderError, setCvBuilderError] = useState('');
+  const [cvBuilderDrag, setCvBuilderDrag] = useState(false);
+  const [cvPrefilled, setCvPrefilled] = useState(false);
+
+  // ATS checker state
+  const [resumeError, setResumeError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [analysing, setAnalysing] = useState(false);
+  const [analysed, setAnalysed] = useState(false);
+  const [atsScore, setAtsScore] = useState(0);
+  const [atsCheckRole, setAtsCheckRole] = useState('');
+
+  // ATS checker panel ref for smooth scroll
+  const atsCheckerRef = useRef(null);
+
+  const ALLOWED = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  const MAX_MB = 5;
+
+  const isValidFile = file => {
+    if (!file) return false;
+    if (!ALLOWED.includes(file.type) && !/\.(pdf|doc|docx)$/i.test(file.name)) return false;
+    if (file.size > MAX_MB * 1024 * 1024) return false;
+    return true;
+  };
+
+  // CV Builder: attach existing CV
+  const attachCVForBuilder = file => {
+    setCvBuilderError('');
+    if (!file) return;
+    if (!ALLOWED.includes(file.type) && !/\.(pdf|doc|docx)$/i.test(file.name)) {
+      return setCvBuilderError('Only PDF, DOC or DOCX files are accepted.');
+    }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      return setCvBuilderError(`File is too large. Maximum size is ${MAX_MB} MB.`);
+    }
+    setSharedFile(file);
+    setCvPrefilled(false);
+    // Simulate reading the CV and pre-filling the fields
+    setTimeout(() => {
+      if (!targetRole) setTargetRole('Junior Product Designer');
+      if (!summary) setSummary('Results-driven early-career professional with a strong foundation in design thinking, collaboration and problem solving. Passionate about creating intuitive user experiences.');
+      setCvPrefilled(true);
+      notify('CV attached — fields pre-filled from your document');
+    }, 900);
+  };
+
+  const handleCVBuilderDrop = e => {
+    e.preventDefault();
+    setCvBuilderDrag(false);
+    attachCVForBuilder(e.dataTransfer.files?.[0]);
+  };
+
+  const removeCVFromBuilder = () => {
+    setSharedFile(null);
+    setCvPrefilled(false);
+    setCvBuilderError('');
+    setAnalysed(false);
+  };
+
+  // ATS Checker: validate and set (uses sharedFile)
+  const validateAndSetATS = file => {
+    setResumeError('');
+    if (!file) return;
+    if (!ALLOWED.includes(file.type) && !/\.(pdf|doc|docx)$/i.test(file.name)) {
+      return setResumeError('Only PDF, DOC or DOCX files are accepted.');
+    }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      return setResumeError(`File is too large. Maximum size is ${MAX_MB} MB.`);
+    }
+    setSharedFile(file);
+    setAnalysed(false);
+  };
+
+  const handleATSDrop = e => {
+    e.preventDefault();
+    setIsDragging(false);
+    validateAndSetATS(e.dataTransfer.files?.[0]);
+  };
+
+  // Send builder's CV to ATS checker and scroll to it
+  const sendToATSChecker = () => {
+    if (!sharedFile) return;
+    setAnalysed(false);
+    setResumeError('');
+    if (atsCheckerRef.current) {
+      atsCheckerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    notify('CV loaded in ATS checker — click Run ATS check');
+  };
+
+  const runAnalysis = () => {
+    if (!sharedFile) return setResumeError('Please attach your resume first.');
+    setAnalysing(true);
+    setAnalysed(false);
+    setTimeout(() => {
+      setAtsScore(Math.floor(Math.random() * 25) + 62);
+      setAnalysing(false);
+      setAnalysed(true);
+      notify('ATS analysis complete!');
+    }, 2200);
+  };
+
+  const scoreLabel = s => s >= 85 ? 'Excellent' : s >= 70 ? 'Strong' : s >= 55 ? 'Fair' : 'Needs work';
+  const scoreColor = s => s >= 85 ? '#3a9e5f' : s >= 70 ? '#416baf' : s >= 55 ? '#c07a2a' : '#b84848';
+
+  const foundKeywords = ['Communication', 'Collaboration', 'Problem solving', 'Attention to detail'];
+  const missingKeywords = atsCheckRole
+    ? [atsCheckRole.split(' ')[0], 'Stakeholder management', 'Data analysis']
+    : ['Role-specific skills', 'Industry keywords', 'Metrics & outcomes'];
+
   const createCV = () => {
     const selectedJob = jobs.find(job => String(job.id) === selectedJobId);
     const cv = `${profile.name}\n${profile.headline}\n${profile.location}\n\nPROFILE\n${summary || 'Motivated early-career professional ready to learn and contribute.'}\n\nTARGET ROLE\n${targetRole || selectedJob?.role || 'Early-career opportunity'}\n\nKEY SKILLS\nCommunication · Collaboration · Problem solving`;
     const file = new Blob([cv], { type: 'text/plain' }); const url = URL.createObjectURL(file); const link = document.createElement('a'); link.href = url; link.download = `${profile.name.replace(/\s+/g, '-')}-CV.txt`; link.click(); URL.revokeObjectURL(url); notify('Your CV draft has been downloaded');
   };
   const applyWithConsent = () => { if (!consent) return notify('Please confirm your consent before applying.'); const job = jobs.find(item => String(item.id) === selectedJobId); if (job) onApply(job); };
-  return <section className="ats-page"><div className="ats-hero"><span className="eyebrow">Career tools</span><h1>ATS Checkers</h1><p>Create a focused CV, check its ATS readiness, and prepare an application with your explicit approval.</p></div><div className="ats-tools"><article className="ats-tool-card"><span className="eyebrow muted">1 · CV builder</span><h2>Create a tailored CV</h2><label>Target role<input value={targetRole} onChange={e => setTargetRole(e.target.value)} placeholder="e.g. Junior product designer" /></label><label>Professional summary<textarea value={summary} onChange={e => setSummary(e.target.value)} placeholder="Highlight your strengths, skills and goals" /></label><button onClick={createCV}>Create and download CV <Icon name="download" size={16}/></button></article><article className="ats-tool-card consent-card"><span className="eyebrow muted">2 · Application consent</span><h2>Apply with your approval</h2><label>Choose a role<select value={selectedJobId} onChange={e => setSelectedJobId(e.target.value)}>{jobs.map(job => <option key={job.id} value={job.id}>{job.role} · {job.company}</option>)}</select></label><label className="consent-check"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} /><span>I approve Workly to use my CV details to prepare this application.</span></label><small>Your application is never sent unless you give consent and confirm it in the next step.</small><button onClick={applyWithConsent} disabled={!consent}>Continue to application <Icon name="arrow" size={16}/></button></article></div><div className="ats-audit-link"><span><Icon name="spark" size={18}/></span><div><b>Already have a CV?</b><p>Upload it for an ATS keyword and structure review.</p></div><button onClick={() => notify('CV audit is ready below')}>Run ATS audit</button></div></section>;
+
+  return (
+    <section className="ats-page">
+      <div className="ats-hero">
+        <span className="eyebrow">Career tools</span>
+        <h1>ATS Checkers</h1>
+        <p>Create a focused CV, check its ATS readiness, and prepare an application with your explicit approval.</p>
+      </div>
+
+      <div className="ats-tools">
+        <article className="ats-tool-card">
+          <span className="eyebrow muted">1 · CV builder</span>
+          <h2>Create a tailored CV</h2>
+
+          {/* ── Attach existing CV ── */}
+          <div className="cvb-upload-wrap">
+            <p className="cvb-upload-label">Already have a CV? Attach it to pre-fill the fields below or send it straight to the ATS checker.</p>
+            {sharedFile ? (
+              <div className="cvb-file-row">
+                <span className="cvb-file-icon"><Icon name="file" size={18}/></span>
+                <div className="cvb-file-info">
+                  <b>{sharedFile.name}</b>
+                  <small>{(sharedFile.size / 1024 / 1024).toFixed(2)} MB{cvPrefilled ? ' · Fields pre-filled ✓' : ' · Loading…'}</small>
+                </div>
+                <div className="cvb-file-actions">
+                  <button className="cvb-action-btn cvb-action-btn--ats" onClick={sendToATSChecker} title="Send to ATS checker">
+                    <Icon name="spark" size={13}/> ATS check
+                  </button>
+                  <button className="cvb-action-btn cvb-action-btn--remove" onClick={removeCVFromBuilder} title="Remove file">✕</button>
+                </div>
+              </div>
+            ) : (
+              <label
+                className={`cvb-dropzone${cvBuilderDrag ? ' cvb-dropzone--drag' : ''}`}
+                onDragOver={e => { e.preventDefault(); setCvBuilderDrag(true); }}
+                onDragLeave={() => setCvBuilderDrag(false)}
+                onDrop={handleCVBuilderDrop}
+              >
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={e => attachCVForBuilder(e.target.files?.[0])}
+                />
+                <span className="cvb-dz-icon"><Icon name="upload" size={16}/></span>
+                <span className="cvb-dz-text">
+                  <b>Attach your existing CV</b>
+                  <small>PDF, DOC or DOCX · Max 5 MB</small>
+                </span>
+              </label>
+            )}
+            {cvBuilderError && <p className="cvb-error">{cvBuilderError}</p>}
+          </div>
+
+          {cvPrefilled && (
+            <div className="cvb-prefill-notice">
+              <Icon name="check" size={12}/> Fields pre-filled from your CV — edit freely before downloading.
+            </div>
+          )}
+
+          <label>Target role<input value={targetRole} onChange={e => setTargetRole(e.target.value)} placeholder="e.g. Junior product designer" /></label>
+          <label>Professional summary<textarea value={summary} onChange={e => setSummary(e.target.value)} placeholder="Highlight your strengths, skills and goals" /></label>
+          <button onClick={createCV}>Create and download CV <Icon name="download" size={16}/></button>
+        </article>
+
+        <article className="ats-tool-card consent-card">
+          <span className="eyebrow muted">2 · Application consent</span>
+          <h2>Apply with your approval</h2>
+          <label>Choose a role<select value={selectedJobId} onChange={e => setSelectedJobId(e.target.value)}>{jobs.map(job => <option key={job.id} value={job.id}>{job.role} · {job.company}</option>)}</select></label>
+          <label className="consent-check"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} /><span>I approve Workly to use my CV details to prepare this application.</span></label>
+          <small>Your application is never sent unless you give consent and confirm it in the next step.</small>
+          <button onClick={applyWithConsent} disabled={!consent}>Continue to application <Icon name="arrow" size={16}/></button>
+        </article>
+      </div>
+
+      {/* ── Resume ATS Upload Section ── */}
+      <div className="ats-upload-section" ref={atsCheckerRef}>
+        <div className="ats-upload-header">
+          <span className="eyebrow muted">3 · Resume ATS checker</span>
+          <h2>Upload your resume for an instant ATS analysis</h2>
+          <p>Get a keyword gap report, structural audit and ATS readiness score — all in seconds. Your file never leaves your device.</p>
+        </div>
+
+        {sharedFile && !analysed && !analysing && (
+          <div className="ats-shared-banner">
+            <span><Icon name="file" size={15}/></span>
+            <span><b>{sharedFile.name}</b> is ready from your CV builder — click <strong>Run ATS check</strong> to analyse it.</span>
+          </div>
+        )}
+
+        <div className="ats-upload-body">
+          {/* Left: upload + controls */}
+          <div className="ats-upload-left">
+            <label
+              className={`ats-dropzone${sharedFile ? ' ats-dropzone--ready' : ''}${isDragging ? ' ats-dropzone--drag' : ''}`}
+              onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleATSDrop}
+            >
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={e => validateAndSetATS(e.target.files?.[0])}
+              />
+              {sharedFile ? (
+                <div className="ats-file-attached">
+                  <span className="ats-file-icon"><Icon name="file" size={24}/></span>
+                  <div>
+                    <b>{sharedFile.name}</b>
+                    <small>{(sharedFile.size / 1024 / 1024).toFixed(2)} MB · Ready to analyse</small>
+                  </div>
+                  <span className="ats-change-badge">Change</span>
+                </div>
+              ) : (
+                <div className="ats-upload-prompt">
+                  <span className="ats-upload-icon"><Icon name="upload" size={26}/></span>
+                  <b>Drop your resume here or click to browse</b>
+                  <small>PDF, DOC or DOCX · Maximum 5 MB</small>
+                </div>
+              )}
+            </label>
+
+            {resumeError && <p className="ats-upload-error">{resumeError}</p>}
+
+            <label className="ats-role-label">
+              Target role <span>(optional — improves keyword matching)</span>
+              <input
+                value={atsCheckRole}
+                onChange={e => setAtsCheckRole(e.target.value)}
+                placeholder="e.g. Marketing coordinator"
+              />
+            </label>
+
+            <button
+              className={`ats-run-btn${analysing ? ' ats-run-btn--loading' : ''}`}
+              onClick={runAnalysis}
+              disabled={analysing}
+            >
+              {analysing
+                ? <><span className="ats-spinner"/> Analysing your resume…</>
+                : <><Icon name="spark" size={16}/> Run ATS check</>
+              }
+            </button>
+          </div>
+
+          {/* Right: results */}
+          <div className="ats-results-pane">
+            {!analysed && !analysing && (
+              <div className="ats-results-empty">
+                <span className="ats-empty-icon"><Icon name="search" size={28}/></span>
+                <h3>Your ATS report will appear here</h3>
+                <p>Attach your resume and click <strong>Run ATS check</strong> to see your score, keyword gaps and structural suggestions.</p>
+              </div>
+            )}
+
+            {analysing && (
+              <div className="ats-results-empty">
+                <div className="ats-scan-anim">
+                  <div className="ats-scan-line"/>
+                </div>
+                <p className="ats-scanning-label">Scanning your resume…</p>
+              </div>
+            )}
+
+            {analysed && !analysing && (
+              <div className="ats-report">
+                {/* Score */}
+                <div className="ats-report-score">
+                  <div className="ats-score-ring" style={{ '--score-color': scoreColor(atsScore), '--pct': `${atsScore}%` }}>
+                    <b>{atsScore}</b><small>/100</small>
+                  </div>
+                  <div>
+                    <strong style={{ color: scoreColor(atsScore) }}>{scoreLabel(atsScore)}</strong>
+                    <p>Your resume is readable by most ATS systems. A few targeted improvements could increase your match rate.</p>
+                  </div>
+                </div>
+
+                {/* Keywords */}
+                <div className="ats-report-section">
+                  <span className="eyebrow muted">Keyword analysis</span>
+                  <div className="ats-kw-row">
+                    <span>Found</span>
+                    <div>{foundKeywords.map(w => <b key={w} className="ats-kw ats-kw--found"><Icon name="check" size={11}/>{w}</b>)}</div>
+                  </div>
+                  <div className="ats-kw-row">
+                    <span>Worth adding</span>
+                    <div>{missingKeywords.map(w => <b key={w} className="ats-kw ats-kw--missing">+ {w}</b>)}</div>
+                  </div>
+                </div>
+
+                {/* Structural audit */}
+                <div className="ats-report-section">
+                  <span className="eyebrow muted">Structural audit</span>
+                  {[
+                    { label: 'Contact details', note: 'Clear and in standard header format', pass: true },
+                    { label: 'Experience chronology', note: 'Reverse-chronological and easy to parse', pass: true },
+                    { label: 'Skills section', note: 'Add 2–3 role-specific keywords', pass: false },
+                    { label: 'Quantified outcomes', note: 'Include numbers and results where possible', pass: false },
+                  ].map(item => (
+                    <div key={item.label} className={`ats-struct-item${item.pass ? '' : ' ats-struct-item--warn'}`}>
+                      <span className="ats-struct-check">{item.pass ? <Icon name="check" size={12}/> : '!'}</span>
+                      <div><b>{item.label}</b><small>{item.note}</small></div>
+                      <em>{item.pass ? 'Pass' : 'Action'}</em>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="ats-report-tip">
+                  <Icon name="spark" size={16}/>
+                  <p><b>Tip:</b> Add one measurable outcome for each key skill — e.g. "Reduced onboarding time by 30%". This boosts both ATS matching and recruiter confidence.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function App() {
