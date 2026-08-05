@@ -207,13 +207,6 @@ function ATSCheckers({ profile, onApply, notify }) {
   const ALLOWED = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
   const MAX_MB = 5;
 
-  const isValidFile = file => {
-    if (!file) return false;
-    if (!ALLOWED.includes(file.type) && !/\.(pdf|doc|docx)$/i.test(file.name)) return false;
-    if (file.size > MAX_MB * 1024 * 1024) return false;
-    return true;
-  };
-
   // CV Builder: attach existing CV
   const attachCVForBuilder = file => {
     setCvBuilderError('');
