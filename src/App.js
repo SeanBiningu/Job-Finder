@@ -1,6 +1,98 @@
 import { useMemo, useRef, useState } from 'react';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import mammoth from 'mammoth';
 import './App.css';
 import { searchJobs } from './services/jobSearch';
+
+// PDF.js needs a dedicated worker to read uploaded PDF text in the browser.
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+
+const ROLE_KEYWORDS = {
+  design: ['Figma', 'Wireframing', 'Prototyping', 'User research', 'Design systems', 'Usability testing'],
+  marketing: ['SEO', 'Content strategy', 'Google Analytics', 'Campaign management', 'Social media', 'Email marketing'],
+  data: ['SQL', 'Excel', 'Python', 'Tableau', 'Power BI', 'Data analysis'],
+  software: ['JavaScript', 'React', 'Git', 'APIs', 'Testing', 'Agile'],
+  sales: ['CRM', 'Lead generation', 'Pipeline management', 'Negotiation', 'Account management', 'Salesforce'],
+  project: ['Project management', 'Stakeholder management', 'Agile', 'Risk management', 'Budget management', 'Scrum'],
+  customer: ['Customer service', 'CRM', 'Conflict resolution', 'Customer satisfaction', 'Communication', 'Problem solving'],
+  general: ['Communication', 'Collaboration', 'Problem solving', 'Attention to detail', 'Time management', 'Microsoft Office'],
+};
+
+const includesPhrase = (text, phrase) => new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&').replace(/\\s+/g, '\\s+')}\\b`, 'i').test(text);
+const unique = values => [...new Set(values)];
+
+const roleKeywordSet = role => {
+  const value = role.toLowerCase();
+  const group = Object.keys(ROLE_KEYWORDS).find(key => key !== 'general' && value.includes(key));
+  return unique([...(group ? ROLE_KEYWORDS[group] : []), ...ROLE_KEYWORDS.general]);
+};
+
+const extractResumeText = async file => {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (extension === 'docx') {
+    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    return result.value;
+  }
+  if (extension === 'pdf') {
+    const document = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), disableWorker: true }).promise;
+    const pages = await Promise.all(Array.from({ length: document.numPages }, async (_, index) => {
+      const page = await document.getPage(index + 1);
+      const content = await page.getTextContent();
+      return content.items.map(item => item.str).join(' ');
+    }));
+    return pages.join('\n');
+  }
+  if (extension === 'doc') throw new Error('Legacy .doc files cannot be read in the browser. Please upload a PDF or DOCX version of your CV.');
+  return file.text();
+};
+
+const buildAtsReport = (text, role) => {
+  const cleanText = text.replace(/\s+/g, ' ').trim();
+  const keywords = roleKeywordSet(role);
+  const found = keywords.filter(keyword => includesPhrase(cleanText, keyword));
+  const missing = keywords.filter(keyword => !includesPhrase(cleanText, keyword)).slice(0, 4);
+  const hasContact = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?[\d\s().-]{8,}/i.test(cleanText);
+  const hasExperience = /experience|employment|work history|professional experience/i.test(cleanText);
+  const hasSkillsHeading = /\b(skills|technical skills|core competencies|key skills)\b/i.test(cleanText);
+  const hasOutcomes = /\b\d+(?:[,.]\d+)?\s*(?:%|percent|x|hours?|days?|weeks?|months?|years?|customers?|clients?|projects?|users?|team members?|k|m)\b/i.test(cleanText) || /\b(increased|reduced|improved|grew|saved|delivered|achieved)\b[^.]{0,70}\b\d+/i.test(cleanText);
+  const structuralItems = [
+    { label: 'Contact details', note: hasContact ? 'Email or phone contact found in your CV' : 'Add an email address or phone number near the top of your CV', pass: hasContact },
+    { label: 'Experience section', note: hasExperience ? 'Experience section found and ready to scan' : 'Use a clear Experience or Employment heading', pass: hasExperience },
+    { label: 'Skills section', note: hasSkillsHeading ? `${found.length} matching skill${found.length === 1 ? '' : 's'} found for this role` : 'Add a clearly labelled skills section with relevant tools and strengths', pass: hasSkillsHeading && found.length > 0 },
+    { label: 'Quantified outcomes', note: hasOutcomes ? 'Measurable results or numbers found in your CV' : 'Add results with numbers, percentages, time saved, or project scale', pass: hasOutcomes },
+  ];
+  const score = Math.min(98, Math.max(20, 30 + (hasContact ? 15 : 0) + (hasExperience ? 15 : 0) + (hasSkillsHeading ? 12 : 0) + (hasOutcomes ? 15 : 0) + Math.round((found.length / keywords.length) * 13)));
+  return { found: found.length ? found : ['No role-specific keywords found'], missing: missing.length ? missing : ['No priority keyword gaps found'], structuralItems, score, textLength: cleanText.length };
+};
+
+const parseResumeText = text => {
+  const sectionPattern = /(?:profile|summary|about me|personal statement|professional summary|objective)[:\s]*([\s\S]*?)(?=\n\s*(?:experience|employment|work history|education|skills|projects|certifications|references)\b|$)/i;
+  const skillsPattern = /(?:skills|technical skills|core competencies|key skills|tools)[:\s]*([\s\S]*?)(?=\n\s*(?:experience|employment|work history|education|projects|certifications|references|achievements)\b|$)/i;
+  const rolePattern = /(?:seeking|targeting|applying for|objective|desired role|target role)[:\s-]*(.{4,70})/i;
+  const summaryMatch = text.match(sectionPattern);
+  const skillsMatch = text.match(skillsPattern);
+  const roleMatch = text.match(rolePattern);
+  const skills = skillsMatch
+    ? skillsMatch[1].split(/[,·•|/\n]/).map(item => item.replace(/^[-•\s]+/, '').trim()).filter(item => item.length > 1 && item.length < 45)
+    : [];
+  const achievements = [];
+  const achievementPattern = /(?:increased|reduced|improved|grew|saved|delivered|achieved|managed|led|created|built|designed|launched)[^.!\n]{0,90}\d+[^.!\n]*/gi;
+  let achievementMatch;
+  while ((achievementMatch = achievementPattern.exec(text)) !== null && achievements.length < 3) {
+    achievements.push(achievementMatch[0].replace(/\s+/g, ' ').trim());
+  }
+  return {
+    summary: summaryMatch ? summaryMatch[1].replace(/\s+/g, ' ').trim().slice(0, 600) : '',
+    skills: [...new Set(skills)].slice(0, 14),
+    targetRole: roleMatch ? roleMatch[1].replace(/\s+/g, ' ').trim() : '',
+    achievements,
+  };
+};
+
+const buildCvDraftText = (profile, { summary, targetRole, cvSkills, achievementPrompts, selectedRole }) => {
+  const base = `${profile.name}\n${profile.headline}\n${profile.location}\n\nPROFILE\n${summary || 'Motivated early-career professional ready to learn and contribute.'}\n\nTARGET ROLE\n${targetRole || selectedRole || 'Early-career opportunity'}\n\nKEY SKILLS\nCommunication · Collaboration · Problem solving`;
+  return `${base}\n\nTAILORED KEY SKILLS\n${cvSkills || 'Review and add your relevant skills.'}${achievementPrompts ? `\n\nACHIEVEMENT IDEAS TO PERSONALISE\n${achievementPrompts}` : ''}`;
+};
 
 const Icon = ({ name, size = 20 }) => {
   const paths = {
@@ -182,16 +274,25 @@ function DiscoverOverview({ setActive }) {
 function ATSCheckers({ profile, onApply, notify }) {
   const [targetRole, setTargetRole] = useState('');
   const [summary, setSummary] = useState('');
+  const [cvSkills, setCvSkills] = useState('');
+  const [achievementPrompts, setAchievementPrompts] = useState('');
+  const [refinementInstructions, setRefinementInstructions] = useState([]);
+  const [showRefinementReview, setShowRefinementReview] = useState(false);
+  const [refinementAwaitingApproval, setRefinementAwaitingApproval] = useState(false);
+  const [refinementApplied, setRefinementApplied] = useState(false);
   const [consent, setConsent] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState(String(jobs[0].id));
 
   // ── Shared file state (used by BOTH CV builder and ATS checker) ──
   const [sharedFile, setSharedFile] = useState(null);
+  const [attachedCvText, setAttachedCvText] = useState('');
 
   // CV Builder upload state
   const [cvBuilderError, setCvBuilderError] = useState('');
   const [cvBuilderDrag, setCvBuilderDrag] = useState(false);
   const [cvPrefilled, setCvPrefilled] = useState(false);
+  const [isPrefilling, setIsPrefilling] = useState(false);
+  const [refiningFromATS, setRefiningFromATS] = useState(false);
 
   // ATS checker state
   const [resumeError, setResumeError] = useState('');
@@ -200,12 +301,42 @@ function ATSCheckers({ profile, onApply, notify }) {
   const [analysed, setAnalysed] = useState(false);
   const [atsScore, setAtsScore] = useState(0);
   const [atsCheckRole, setAtsCheckRole] = useState('');
+  const [atsReport, setAtsReport] = useState(null);
 
   // ATS checker panel ref for smooth scroll
   const atsCheckerRef = useRef(null);
+  const cvBuilderRef = useRef(null);
 
   const ALLOWED = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
   const MAX_MB = 5;
+
+  const applyParsedResume = parsed => {
+    if (parsed.targetRole) setTargetRole(current => current || parsed.targetRole);
+    if (parsed.summary) setSummary(current => current || parsed.summary);
+    if (parsed.skills.length) setCvSkills(current => current || parsed.skills.join(', '));
+    if (parsed.achievements.length) setAchievementPrompts(current => current || parsed.achievements.join('\n'));
+  };
+
+  const prefillBuilderFromFile = async (file, source = 'builder') => {
+    setIsPrefilling(true);
+    setCvBuilderError('');
+    try {
+      const resumeText = await extractResumeText(file);
+      if (resumeText.trim().length < 20) throw new Error('We could not read enough text from this file. Try a text-based PDF or DOCX.');
+      setAttachedCvText(resumeText);
+      applyParsedResume(parseResumeText(resumeText));
+      setCvPrefilled(true);
+      setRefiningFromATS(source === 'checker');
+      notify(source === 'checker'
+        ? 'CV received from ATS checker — review and refine the fields below'
+        : 'CV attached — fields pre-filled from your document');
+    } catch (error) {
+      setCvBuilderError(error.message || 'Could not read this CV. Please try a different PDF or DOCX file.');
+      setCvPrefilled(false);
+    } finally {
+      setIsPrefilling(false);
+    }
+  };
 
   // CV Builder: attach existing CV
   const attachCVForBuilder = file => {
@@ -219,13 +350,14 @@ function ATSCheckers({ profile, onApply, notify }) {
     }
     setSharedFile(file);
     setCvPrefilled(false);
-    // Simulate reading the CV and pre-filling the fields
-    setTimeout(() => {
-      if (!targetRole) setTargetRole('Junior Product Designer');
-      if (!summary) setSummary('Results-driven early-career professional with a strong foundation in design thinking, collaboration and problem solving. Passionate about creating intuitive user experiences.');
-      setCvPrefilled(true);
-      notify('CV attached — fields pre-filled from your document');
-    }, 900);
+    setRefiningFromATS(false);
+    setRefinementInstructions([]);
+    setShowRefinementReview(false);
+    setRefinementAwaitingApproval(false);
+    setRefinementApplied(false);
+    setAnalysed(false);
+    setAtsReport(null);
+    prefillBuilderFromFile(file, 'builder');
   };
 
   const handleCVBuilderDrop = e => {
@@ -236,9 +368,16 @@ function ATSCheckers({ profile, onApply, notify }) {
 
   const removeCVFromBuilder = () => {
     setSharedFile(null);
+    setAttachedCvText('');
     setCvPrefilled(false);
+    setRefiningFromATS(false);
+    setRefinementInstructions([]);
+    setShowRefinementReview(false);
+    setRefinementAwaitingApproval(false);
+    setRefinementApplied(false);
     setCvBuilderError('');
     setAnalysed(false);
+    setAtsReport(null);
   };
 
   // ATS Checker: validate and set (uses sharedFile)
@@ -253,6 +392,12 @@ function ATSCheckers({ profile, onApply, notify }) {
     }
     setSharedFile(file);
     setAnalysed(false);
+    setAtsReport(null);
+    setRefiningFromATS(false);
+    setShowRefinementReview(false);
+    setRefinementAwaitingApproval(false);
+    setRefinementApplied(false);
+    if (!cvPrefilled) prefillBuilderFromFile(file, 'checker');
   };
 
   const handleATSDrop = e => {
@@ -265,6 +410,7 @@ function ATSCheckers({ profile, onApply, notify }) {
   const sendToATSChecker = () => {
     if (!sharedFile) return;
     setAnalysed(false);
+    setAtsReport(null);
     setResumeError('');
     if (atsCheckerRef.current) {
       atsCheckerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -272,30 +418,101 @@ function ATSCheckers({ profile, onApply, notify }) {
     notify('CV loaded in ATS checker — click Run ATS check');
   };
 
-  const runAnalysis = () => {
+  const runAnalysis = async () => {
     if (!sharedFile) return setResumeError('Please attach your resume first.');
     setAnalysing(true);
     setAnalysed(false);
-    setTimeout(() => {
-      setAtsScore(Math.floor(Math.random() * 25) + 62);
+    setResumeError('');
+    setAtsReport(null);
+    try {
+      const resumeText = await extractResumeText(sharedFile);
+      if (resumeText.trim().length < 20) throw new Error('We could not read enough text from this file. Please upload a text-based PDF or DOCX CV.');
+      const report = buildAtsReport(resumeText, atsCheckRole);
+      setAtsReport(report);
+      setAtsScore(report.score);
+      setShowRefinementReview(false);
       setAnalysing(false);
       setAnalysed(true);
       notify('ATS analysis complete!');
-    }, 2200);
+    } catch (error) {
+      setAnalysing(false);
+      setResumeError(error.message || 'We could not analyse this CV. Please try a different PDF or DOCX file.');
+    }
   };
 
   const scoreLabel = s => s >= 85 ? 'Excellent' : s >= 70 ? 'Strong' : s >= 55 ? 'Fair' : 'Needs work';
   const scoreColor = s => s >= 85 ? '#3a9e5f' : s >= 70 ? '#416baf' : s >= 55 ? '#c07a2a' : '#b84848';
 
-  const foundKeywords = ['Communication', 'Collaboration', 'Problem solving', 'Attention to detail'];
-  const missingKeywords = atsCheckRole
-    ? [atsCheckRole.split(' ')[0], 'Stakeholder management', 'Data analysis']
-    : ['Role-specific skills', 'Industry keywords', 'Metrics & outcomes'];
+  const foundKeywords = atsReport?.found || [];
+  const missingKeywords = atsReport?.missing || [];
+
+  const getRefinementRecommendations = () => {
+    if (!atsReport) return { gaps: [], keywords: [], instructions: [] };
+    const gaps = atsReport.structuralItems.filter(item => !item.pass);
+    const keywords = atsReport.missing.filter(keyword => !keyword.startsWith('No '));
+    return { gaps, keywords, instructions: [...keywords.map(keyword => `Add “${keyword}” only if you can genuinely demonstrate it.`), ...gaps.map(item => item.note)] };
+  };
+
+  const sendRefinementsToBuilder = async () => {
+    if (!atsReport) return;
+    const { instructions } = getRefinementRecommendations();
+    if (sharedFile && !cvPrefilled && !isPrefilling) {
+      await prefillBuilderFromFile(sharedFile, 'checker');
+    }
+    setRefinementInstructions(instructions);
+    setRefiningFromATS(true);
+    setRefinementAwaitingApproval(true);
+    setRefinementApplied(false);
+    setShowRefinementReview(false);
+    if (atsCheckRole) setTargetRole(atsCheckRole);
+    if (cvBuilderRef.current) cvBuilderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    notify('Recommendations sent to the CV builder — approve them there before changes are applied');
+  };
+
+  const applyApprovedRefinements = () => {
+    const { gaps, keywords } = getRefinementRecommendations();
+    if (keywords.length) setCvSkills(current => [...new Set([...current.split(',').map(item => item.trim()).filter(Boolean), ...keywords])].join(', '));
+    if (gaps.some(item => item.label === 'Quantified outcomes')) {
+      setAchievementPrompts(current => current || 'Add a truthful measurable result, for example: Improved [process] by [number or percentage] through [your action].');
+    }
+    setRefinementAwaitingApproval(false);
+    setRefinementApplied(true);
+    notify('ATS refinements added — review and edit them before downloading');
+  };
+
+  const recheckRefinedCV = async () => {
+    const selectedJob = jobs.find(job => String(job.id) === selectedJobId);
+    const refinedText = buildCvDraftText(profile, {
+      summary,
+      targetRole,
+      cvSkills,
+      achievementPrompts,
+      selectedRole: selectedJob?.role,
+    });
+    const refinedFile = new File([refinedText], `${profile.name.replace(/\s+/g, '-')}-refined-CV.txt`, { type: 'text/plain' });
+    setSharedFile(refinedFile);
+    setAttachedCvText(refinedText);
+    setAnalysed(false);
+    setAtsReport(null);
+    setResumeError('');
+    if (targetRole) setAtsCheckRole(targetRole);
+    if (atsCheckerRef.current) atsCheckerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    notify('Refined CV sent to ATS checker — click Run ATS check to see your updated score');
+  };
 
   const createCV = () => {
     const selectedJob = jobs.find(job => String(job.id) === selectedJobId);
-    const cv = `${profile.name}\n${profile.headline}\n${profile.location}\n\nPROFILE\n${summary || 'Motivated early-career professional ready to learn and contribute.'}\n\nTARGET ROLE\n${targetRole || selectedJob?.role || 'Early-career opportunity'}\n\nKEY SKILLS\nCommunication · Collaboration · Problem solving`;
-    const file = new Blob([cv], { type: 'text/plain' }); const url = URL.createObjectURL(file); const link = document.createElement('a'); link.href = url; link.download = `${profile.name.replace(/\s+/g, '-')}-CV.txt`; link.click(); URL.revokeObjectURL(url); notify('Your CV draft has been downloaded');
+    const refinedCv = buildCvDraftText(profile, {
+      summary,
+      targetRole,
+      cvSkills,
+      achievementPrompts,
+      selectedRole: selectedJob?.role,
+    });
+    const file = new Blob([refinedCv], { type: 'text/plain' }); const url = URL.createObjectURL(file); const link = document.createElement('a'); link.href = url; link.download = `${profile.name.replace(/\s+/g, '-')}-CV.txt`; link.click(); URL.revokeObjectURL(url);
+    setAttachedCvText(refinedCv);
+    setSharedFile(new File([refinedCv], `${profile.name.replace(/\s+/g, '-')}-CV.txt`, { type: 'text/plain' }));
+    notify('Your refined CV draft has been downloaded');
   };
   const applyWithConsent = () => { if (!consent) return notify('Please confirm your consent before applying.'); const job = jobs.find(item => String(item.id) === selectedJobId); if (job) onApply(job); };
 
@@ -308,19 +525,22 @@ function ATSCheckers({ profile, onApply, notify }) {
       </div>
 
       <div className="ats-tools">
-        <article className="ats-tool-card">
+        <article className="ats-tool-card" ref={cvBuilderRef}>
           <span className="eyebrow muted">1 · CV builder</span>
           <h2>Create a tailored CV</h2>
 
           {/* ── Attach existing CV ── */}
           <div className="cvb-upload-wrap">
-            <p className="cvb-upload-label">Already have a CV? Attach it to pre-fill the fields below or send it straight to the ATS checker.</p>
+            <p className="cvb-upload-label">Already have a CV? Attach it to pre-fill the fields below, refine it after an ATS check, or send it straight to the checker.</p>
             {sharedFile ? (
               <div className="cvb-file-row">
                 <span className="cvb-file-icon"><Icon name="file" size={18}/></span>
                 <div className="cvb-file-info">
                   <b>{sharedFile.name}</b>
-                  <small>{(sharedFile.size / 1024 / 1024).toFixed(2)} MB{cvPrefilled ? ' · Fields pre-filled ✓' : ' · Loading…'}</small>
+                  <small>
+                    {(sharedFile.size / 1024 / 1024).toFixed(2)} MB
+                    {isPrefilling ? ' · Reading CV…' : cvPrefilled ? refiningFromATS ? ' · Ready to refine from ATS check ✓' : ' · Fields pre-filled ✓' : ''}
+                  </small>
                 </div>
                 <div className="cvb-file-actions">
                   <button className="cvb-action-btn cvb-action-btn--ats" onClick={sendToATSChecker} title="Send to ATS checker">
@@ -351,15 +571,58 @@ function ATSCheckers({ profile, onApply, notify }) {
             {cvBuilderError && <p className="cvb-error">{cvBuilderError}</p>}
           </div>
 
-          {cvPrefilled && (
+          {cvPrefilled && !refiningFromATS && (
             <div className="cvb-prefill-notice">
-              <Icon name="check" size={12}/> Fields pre-filled from your CV — edit freely before downloading.
+              <Icon name="check" size={12}/> Fields pre-filled from your attached CV — edit freely before downloading.
+            </div>
+          )}
+
+          {refiningFromATS && (
+            <div className="cvb-refine-notice">
+              <Icon name="spark" size={12}/>
+              <span>
+                <b>Refining CV from ATS checker</b>
+                <small>
+                  {attachedCvText
+                    ? `Your attached CV (${attachedCvText.split(/\s+/).filter(Boolean).length} words) and ATS recommendations are loaded below. Edit the fields, then download or re-check your score.`
+                    : 'Your attached CV and ATS recommendations are loaded below. Edit the fields, then download or re-check your score.'}
+                </small>
+              </span>
+            </div>
+          )}
+
+          {refinementAwaitingApproval && (
+            <div className="cvb-refinement-consent">
+              <Icon name="spark" size={14}/>
+              <div>
+                <b>Apply the ATS refinements?</b>
+                <small>Nothing has been changed yet. With your permission, we will add the approved, relevant keywords and a truthful quantified-outcome prompt for you to review.</small>
+                <span><button type="button" className="cvb-consent-secondary" onClick={() => { setRefinementAwaitingApproval(false); notify('ATS suggestions kept for review; no CV fields were changed'); }}>Keep suggestions only</button><button type="button" onClick={applyApprovedRefinements}>Yes, refine my draft</button></span>
+              </div>
             </div>
           )}
 
           <label>Target role<input value={targetRole} onChange={e => setTargetRole(e.target.value)} placeholder="e.g. Junior product designer" /></label>
           <label>Professional summary<textarea value={summary} onChange={e => setSummary(e.target.value)} placeholder="Highlight your strengths, skills and goals" /></label>
-          <button onClick={createCV}>Create and download CV <Icon name="download" size={16}/></button>
+          <label>Key skills<textarea value={cvSkills} onChange={e => setCvSkills(e.target.value)} placeholder="Add skills you can genuinely demonstrate, separated by commas" /></label>
+          <label>Achievement prompts<textarea value={achievementPrompts} onChange={e => setAchievementPrompts(e.target.value)} placeholder="Add truthful results, numbers, or project outcomes" /></label>
+          {refinementInstructions.length > 0 && (
+            <div className="cvb-refine-plan">
+              <Icon name="spark" size={12}/>
+              <span>
+                <b>{refinementApplied ? 'ATS refinement plan applied — review before downloading:' : 'ATS refinement plan — suggestions only:'}</b>
+                {refinementInstructions.map(instruction => <small key={instruction}>• {instruction}</small>)}
+              </span>
+            </div>
+          )}
+          <div className="cvb-actions">
+            <button onClick={createCV}>Create and download CV <Icon name="download" size={16}/></button>
+            {(refiningFromATS || refinementInstructions.length > 0) && (
+              <button className="cvb-recheck-btn" onClick={recheckRefinedCV}>
+                Re-check refined CV <Icon name="spark" size={14}/>
+              </button>
+            )}
+          </div>
         </article>
 
         <article className="ats-tool-card consent-card">
@@ -383,7 +646,12 @@ function ATSCheckers({ profile, onApply, notify }) {
         {sharedFile && !analysed && !analysing && (
           <div className="ats-shared-banner">
             <span><Icon name="file" size={15}/></span>
-            <span><b>{sharedFile.name}</b> is ready from your CV builder — click <strong>Run ATS check</strong> to analyse it.</span>
+            <span>
+              <b>{sharedFile.name}</b> is ready
+              {cvPrefilled ? ' — also loaded in the CV builder for refinement.' : ' — click '}
+              {!cvPrefilled && <> <strong>Run ATS check</strong> to analyse it.</>}
+              {cvPrefilled && <> Click <strong>Run ATS check</strong> to analyse, then refine in the CV builder.</>}
+            </span>
           </div>
         )}
 
@@ -425,7 +693,7 @@ function ATSCheckers({ profile, onApply, notify }) {
               Target role <span>(optional — improves keyword matching)</span>
               <input
                 value={atsCheckRole}
-                onChange={e => setAtsCheckRole(e.target.value)}
+                onChange={e => { setAtsCheckRole(e.target.value); setAnalysed(false); setAtsReport(null); }}
                 placeholder="e.g. Marketing coordinator"
               />
             </label>
@@ -463,6 +731,19 @@ function ATSCheckers({ profile, onApply, notify }) {
 
             {analysed && !analysing && (
               <div className="ats-report">
+                <button className="ats-run-btn ats-refine-btn" onClick={() => setShowRefinementReview(true)}>
+                  <Icon name="spark" size={16}/> Review ATS refinements
+                </button>
+                {showRefinementReview && (
+                  <div className="ats-refinement-review">
+                    <div><b>Would you like to refine these ATS areas?</b><small>We will only send these suggestions to the CV builder after you confirm. The builder will ask for permission again before it changes your draft.</small></div>
+                    <ul>
+                      {missingKeywords.length > 0 && <li><strong>Worth adding:</strong> {missingKeywords.join(', ')}</li>}
+                      {(atsReport?.structuralItems || []).filter(item => !item.pass).map(item => <li key={item.label}><strong>{item.label}:</strong> {item.note}</li>)}
+                    </ul>
+                    <div className="ats-review-actions"><button type="button" className="ats-review-secondary" onClick={() => setShowRefinementReview(false)}>No, keep my CV as is</button><button type="button" onClick={sendRefinementsToBuilder}>Yes, send to CV builder <Icon name="arrow" size={14}/></button></div>
+                  </div>
+                )}
                 {/* Score */}
                 <div className="ats-report-score">
                   <div className="ats-score-ring" style={{ '--score-color': scoreColor(atsScore), '--pct': `${atsScore}%` }}>
@@ -470,7 +751,7 @@ function ATSCheckers({ profile, onApply, notify }) {
                   </div>
                   <div>
                     <strong style={{ color: scoreColor(atsScore) }}>{scoreLabel(atsScore)}</strong>
-                    <p>Your resume is readable by most ATS systems. A few targeted improvements could increase your match rate.</p>
+                    <p>Based on the text extracted from this CV and {atsCheckRole ? `its match for ${atsCheckRole}` : 'its structure and transferable skills'}.</p>
                   </div>
                 </div>
 
@@ -490,12 +771,12 @@ function ATSCheckers({ profile, onApply, notify }) {
                 {/* Structural audit */}
                 <div className="ats-report-section">
                   <span className="eyebrow muted">Structural audit</span>
-                  {[
+                  {(atsReport?.structuralItems || [
                     { label: 'Contact details', note: 'Clear and in standard header format', pass: true },
                     { label: 'Experience chronology', note: 'Reverse-chronological and easy to parse', pass: true },
                     { label: 'Skills section', note: 'Add 2–3 role-specific keywords', pass: false },
                     { label: 'Quantified outcomes', note: 'Include numbers and results where possible', pass: false },
-                  ].map(item => (
+                  ]).map(item => (
                     <div key={item.label} className={`ats-struct-item${item.pass ? '' : ' ats-struct-item--warn'}`}>
                       <span className="ats-struct-check">{item.pass ? <Icon name="check" size={12}/> : '!'}</span>
                       <div><b>{item.label}</b><small>{item.note}</small></div>
