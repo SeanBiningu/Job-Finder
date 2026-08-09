@@ -311,6 +311,8 @@ function ProfileModal({ profile, onClose, onSave }) {
   return <div className="modal-backdrop"><form className="application-modal profile-modal" onSubmit={e => { e.preventDefault(); onSave({ name, headline, location }); }}><button type="button" className="modal-close" onClick={onClose}>x</button><span className="eyebrow muted">Profile settings</span><h2>Set up your profile</h2><p className="modal-role">Keep this current so employers can find the right fit.</p><label>Full name<input value={name} onChange={e => setName(e.target.value)} /></label><label>Career headline<input value={headline} onChange={e => setHeadline(e.target.value)} /></label><label>Location<input value={location} onChange={e => setLocation(e.target.value)} /></label><button className="send-application" type="submit">Save profile <Icon name="check" size={16}/></button></form></div>;
 }
 
+// Retained for the next Discover-page iteration.
+// eslint-disable-next-line no-unused-vars
 function DiscoverOverview({ setActive }) {
   const [query, setQuery] = useState(''); const [selected, setSelected] = useState('Find jobs');
   const matchingJobs = jobs.filter(job => `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())).slice(0, 4);
