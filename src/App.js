@@ -199,15 +199,22 @@ function Discover({ setActive, notify }) {
   const [interest, setInterest] = useState('Design & creative'); const [pathStep, setPathStep] = useState(1); const [exploring, setExploring] = useState(false); const [seatSaved, setSeatSaved] = useState(false);
   const choose = title => { setInterest(title); setExploring(true); notify(`${title} explorer opened`); };
   return <>
-    <section className="hero"><div className="hero-copy"><span className="eyebrow"><Icon name="spark" size={14}/> Your next chapter starts here</span><h1>Find work that<br/><em>moves you forward.</em></h1><p>Discover early-career roles, prove your skills, and build a future you are proud of.</p><button className="hero-cta" onClick={() => setActive('Find jobs')}>Browse opportunities <Icon name="arrow" size={18}/></button></div><div className="hero-art"><div className="sun"/><div className="abstract-card card-one"><b>+</b><span>Career<br/>momentum</span></div><div className="abstract-card card-two"><span className="ring"/><b>Skills unlocked</b></div><div className="profile-photo"><div className="photo-face">~</div></div><div className="floating-badge"><span className="tick"><Icon name="check" size={16}/></span><div><b>Profile strength</b><small>Looking great! 82%</small></div></div></div></section>
+    <section className="hero"><div className="hero-copy"><span className="eyebrow"><Icon name="spark" size={14}/> Your next chapter starts here</span><h1>Find work that<br/><em>moves you forward.</em></h1><p>Discover early-career roles, prove your skills, and build a future you are proud of.</p><button className="hero-cta" onClick={() => setActive('Find jobs')}>Browse opportunities <Icon name="arrow" size={18}/></button></div><div className="hero-art"><div className="sun"/><div className="abstract-card card-two"><span className="ring"/><b>Skills unlocked</b></div><div className="profile-photo"><div className="photo-face">~</div></div><div className="floating-badge"><span className="tick"><Icon name="check" size={16}/></span><div><b>Profile strength</b><small>Looking great! 82%</small></div></div></div></section>
     <section className="trust-row"><div><b>24,000+</b><small>people found a role</small></div><div><b>1,800+</b><small>growing companies</small></div><div><b>92%</b><small>feel more career-ready</small></div><p>"Workly helped me turn what I learned into a role I love." <strong>- Jamie, Product Designer</strong></p></section>
     <section className="discover-hub"><div className="discover-heading"><div><span className="eyebrow muted">Discover your direction</span><h2>Explore what feels like you</h2><p>Follow your curiosity. We will connect it to practical skills, people and opportunities.</p></div></div><div className="interest-grid">{[['Design & creative','Turn ideas into experiences','*','lilac'],['Tech & data','Build what comes next','</>','mint'],['People & community','Make work more human','+','peach'],['Business & impact','Help good ideas grow','>','sky']].map(([title, copy, symbol, tone]) => <button key={title} onClick={() => choose(title)} className={`interest-card ${tone} ${interest === title ? 'selected' : ''}`}><span className="interest-symbol">{symbol}</span><div><b>{title}</b><small>{copy}</small></div><span className="interest-arrow"><Icon name="arrow" size={15}/></span></button>)}</div>{exploring && <div className="explorer-panel"><div><span className="eyebrow muted">Your {interest} explorer</span><h3>Start with the things that make you curious.</h3><p>We picked practical first steps, useful skills and early-career roles that connect with this direction.</p></div><div className="explorer-list"><span><Icon name="check" size={13}/> Explore 12 starter roles</span><span><Icon name="check" size={13}/> Learn 4 in-demand skills</span><span><Icon name="check" size={13}/> Meet people in this field</span></div><button onClick={() => setActive('Find jobs')}>Explore opportunities <Icon name="arrow" size={16}/></button></div>}<div className="discovery-lower"><article className="path-card"><div className="path-copy"><span className="eyebrow">Your weekly path</span><h3>Build momentum,<br/><em>one small step at a time.</em></h3><p>Complete a quick action today and get closer to work you will enjoy.</p><button onClick={() => { setPathStep(pathStep === 3 ? 1 : pathStep + 1); notify(pathStep === 3 ? 'New weekly path started' : 'Nice work - your momentum has increased'); }}>Continue my path <Icon name="arrow" size={16}/></button></div><div className="path-steps">{['Add two skills','Try a skills check','Save three roles'].map((step,index) => <div className={index < pathStep ? 'path-step done' : 'path-step'} key={step}><span>{index < pathStep ? <Icon name="check" size={13}/> : index + 1}</span><div><b>{step}</b><small>{index < pathStep ? 'Completed' : index === pathStep ? 'Up next - 5 mins' : 'Locked until next step'}</small></div></div>)}</div></article><article className="event-card"><div className="event-top"><span className="event-date"><b>08</b><small>AUG</small></span><span className="live-dot">Live session</span></div><span className="eyebrow muted">Career room</span><h3>How to land your first design role</h3><p>Hear from product designers on building a portfolio that gets noticed.</p><div className="event-bottom"><small>{seatSaved ? 'Your seat is reserved' : '128 people joining'}</small><button className={seatSaved ? 'seat-saved' : ''} onClick={() => { setSeatSaved(!seatSaved); notify(seatSaved ? 'Seat released' : 'Your seat has been saved'); }}>{seatSaved ? <><Icon name="check" size={13}/> Seat saved</> : 'Save my seat'}</button></div></article></div></section>
   </>;
 }
 
-function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved, applications, onSave, onApply, jobList = jobs }) {
+function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved, applications, onSave, onApply, jobList = jobs, initialQuery, onClearInitialQuery }) {
   const categoryOnly = internshipOnly ? 'Internship' : apprenticeshipOnly ? 'Apprenticeship' : null;
-  const [query, setQuery] = useState(''); const [location, setLocation] = useState(categoryOnly ? 'Zimbabwe' : 'Zimbabwe, Remote'); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [noExperienceOnly, setNoExperienceOnly] = useState(false); const [liveJobs, setLiveJobs] = useState(jobList); const [searching, setSearching] = useState(false); const [source, setSource] = useState('sample'); const [feedMessage, setFeedMessage] = useState(''); const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+      if (onClearInitialQuery) onClearInitialQuery();
+    }
+  }, [initialQuery, onClearInitialQuery]);
+  const [location, setLocation] = useState(categoryOnly ? 'Zimbabwe' : 'Zimbabwe, Remote'); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [noExperienceOnly, setNoExperienceOnly] = useState(false); const [liveJobs, setLiveJobs] = useState(jobList); const [searching, setSearching] = useState(false); const [source, setSource] = useState('sample'); const [feedMessage, setFeedMessage] = useState(''); const [error, setError] = useState('');
   const displayed = useMemo(() => liveJobs.filter(job => (!categoryOnly || job.type === categoryOnly) && (!programmesOnly || ['Internship', 'Apprenticeship'].includes(job.type)) && (type === 'All' || job.type === type) && (!remote || job.place === 'Remote') && (!noExperienceOnly || job.noExpNeeded) && `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [categoryOnly, programmesOnly, type, remote, noExperienceOnly, query, liveJobs]);
   const filters = programmesOnly ? ['All', 'Internship', 'Apprenticeship', 'Remote'] : internshipOnly ? ['All', 'Remote', 'Marketing', 'Tech'] : apprenticeshipOnly ? ['All', 'Remote', 'Tech', 'Business'] : ['All', 'Full-time', 'Graduate', 'Entry level'];
   const hero = internshipOnly
@@ -297,6 +304,221 @@ function NoExpNeeded({ saved, applications, onSave, onApply, jobList = jobs }) {
   );
 }
 
+const MOCK_COMPANIES = [
+  { name: 'Notion', logo: 'N', color: '#fff2e9', text: '#ff7752', industry: 'Productivity & Tech', location: 'San Francisco, US (Remote)', tagline: 'The all-in-one workspace for notes, docs, and tasks.' },
+  { name: 'Monzo', logo: 'M', color: '#f1edff', text: '#7662d7', industry: 'Fintech & Banking', location: 'London, UK', tagline: 'A digital bank built for the way we live today.' },
+  { name: 'Spotify', logo: 'S', color: '#e6f6ef', text: '#16865d', industry: 'Music & Entertainment', location: 'Stockholm, Sweden (Remote)', tagline: 'Unlock the power of human creativity by giving creative artists the opportunity to thrive.' },
+  { name: 'Canva', logo: 'C', color: '#eaf2ff', text: '#4b7fd3', industry: 'Design & Software', location: 'Sydney, Australia (Remote)', tagline: 'Empowering the world to design anything and publish anywhere.' },
+  { name: 'Airbnb', logo: 'A', color: '#fff0df', text: '#e47b3d', industry: 'Travel & E-commerce', location: 'San Francisco, US (Hybrid)', tagline: 'Book unique homes and experience a city like a local.' },
+  { name: 'HubSpot', logo: 'H', color: '#f1ecff', text: '#8569c9', industry: 'CRM & Marketing Tech', location: 'Boston, US (Remote)', tagline: 'Build, scale, and deliver a delightful customer experience.' },
+  { name: 'BT Group', logo: 'B', color: '#e8f4fd', text: '#2d7bb8', industry: 'Telecommunications', location: 'London, UK', tagline: 'Connecting for good. We make connections that matter.' },
+  { name: 'Deloitte', logo: 'D', color: '#fef3e7', text: '#c8762d', industry: 'Professional Services', location: 'Harare, Zimbabwe', tagline: 'Making an impact that matters for our clients, our people, and society.' },
+  { name: 'TikTok', logo: 'T', color: '#e9f7f2', text: '#1a8a6d', industry: 'Social Media & Tech', location: 'Singapore / Remote', tagline: 'Our mission is to inspire creativity and bring joy.' },
+  { name: 'Grubhub', logo: 'G', color: '#fff5e5', text: '#d4831a', industry: 'Food Delivery & Tech', location: 'Chicago, US (Remote)', tagline: 'Connecting hungry diners with local restaurants.' },
+  { name: 'Zapier', logo: 'Z', color: '#f0ecff', text: '#6a58c8', industry: 'Automation & Tech', location: 'San Francisco, US (Remote)', tagline: 'Easy automation for busy people. Zapier moves info between your web apps automatically.' },
+  { name: 'LinkedIn', logo: 'L', color: '#e8f5fe', text: '#2077b9', industry: 'Professional Networks', location: 'Sunnyvale, US (Remote)', tagline: 'Connect the world’s professionals to make them more productive and successful.' },
+  { name: 'Upwork', logo: 'U', color: '#f5ffe8', text: '#3a8a32', industry: 'Freelance & Marketplace', location: 'San Francisco, US (Remote)', tagline: 'Create economic opportunities so people have better lives.' },
+  { name: 'Red Cross', logo: 'R', color: '#fff0f5', text: '#c84a7a', industry: 'Non-profit & Healthcare', location: 'Harare, Zimbabwe', tagline: 'Preventing and alleviating human suffering in the face of emergencies.' },
+  { name: 'Google', logo: 'G', color: '#eef3fc', text: '#4285f4', industry: 'Search & Cloud Technology', location: 'Mountain View, US', tagline: 'Organizing the world’s information and making it universally accessible.', status: 'upcoming', upcomingDate: 'In 2 days', upcomingCount: 5 },
+  { name: 'Figma', logo: 'F', color: '#fff0f0', text: '#f24e1e', industry: 'Design & Creative', location: 'San Francisco, US', tagline: 'The collaborative interface design tool that brings teams together.', status: 'not-employing' },
+  { name: 'Stripe', logo: 'S', color: '#edf2ff', text: '#635bff', industry: 'Financial Infrastructure', location: 'Dublin, Ireland / Remote', tagline: 'Financial infrastructure for the internet to accept payments and manage businesses.', status: 'upcoming', upcomingDate: 'In 4 days', upcomingCount: 3 },
+  { name: 'Netflix', logo: 'N', color: '#fff0f0', text: '#e50914', industry: 'Entertainment & Streaming', location: 'Los Gatos, US', tagline: 'Stream the world’s best television series, documentaries, and movies.', status: 'not-employing' },
+  { name: 'Slack', logo: 'S', color: '#fbf0f8', text: '#4a154b', industry: 'Communication & SaaS', location: 'Vancouver, Canada', tagline: 'Slack is where work flows. It’s the hub for your team, your tools, and your talk.', status: 'upcoming', upcomingDate: 'In 3 days', upcomingCount: 2 },
+  { name: 'Microsoft', logo: 'M', color: '#eefbfb', text: '#00a4ef', industry: 'Enterprise Software & Cloud', location: 'Redmond, US', tagline: 'Empowering every person and every organization on the planet to achieve more.', status: 'not-employing' },
+  { name: 'Econet Wireless', logo: 'E', color: '#eaf4ff', text: '#0052cc', industry: 'Telecommunications', location: 'Harare, Zimbabwe', tagline: 'Providing premier telecommunications, media and technology solutions.', status: 'upcoming', upcomingDate: 'In 5 days', upcomingCount: 4 },
+  { name: 'Old Mutual', logo: 'O', color: '#eefbf3', text: '#008b45', industry: 'Financial Services & Investment', location: 'Harare, Zimbabwe', tagline: 'Helping you grow and protect your wealth for a secure future.', status: 'not-employing' },
+];
+
+function BrowseEmployers({ setActive, jobList, notify, setJobSearchQuery }) {
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [notifiedCompanies, setNotifiedCompanies] = useState([]);
+
+  const employers = useMemo(() => {
+    const activeJobsByCompany = {};
+    jobList.forEach(job => {
+      const name = job.company;
+      if (!activeJobsByCompany[name]) {
+        activeJobsByCompany[name] = [];
+      }
+      activeJobsByCompany[name].push(job);
+    });
+
+    const mockCompaniesMap = new Map(MOCK_COMPANIES.map(c => [c.name.toLowerCase(), c]));
+
+    const list = MOCK_COMPANIES.map(comp => {
+      const activeJobs = activeJobsByCompany[comp.name] || [];
+      if (activeJobs.length > 0) {
+        return {
+          ...comp,
+          status: 'employing',
+          activeJobsCount: activeJobs.length,
+          logo: activeJobs[0].logo || comp.logo,
+          color: activeJobs[0].color || comp.color,
+          text: activeJobs[0].text || comp.text,
+        };
+      }
+      return {
+        ...comp,
+        status: comp.status || 'not-employing',
+        activeJobsCount: 0,
+      };
+    });
+
+    jobList.forEach(job => {
+      const name = job.company;
+      if (!mockCompaniesMap.has(name.toLowerCase())) {
+        const activeJobs = activeJobsByCompany[name] || [];
+        const newComp = {
+          name,
+          logo: job.logo || name.slice(0, 1).toUpperCase(),
+          color: job.color || '#edf4e8',
+          text: job.text || '#31543f',
+          industry: 'General Hiring',
+          location: job.place || 'Remote',
+          tagline: `Growing team at ${name}.`,
+          status: 'employing',
+          activeJobsCount: activeJobs.length,
+        };
+        list.push(newComp);
+        mockCompaniesMap.set(name.toLowerCase(), newComp);
+      }
+    });
+
+    // Sort alphabetically
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [jobList]);
+
+  const displayed = useMemo(() => {
+    return employers.filter(emp => {
+      if (statusFilter === 'Hiring Now' && emp.status !== 'employing') return false;
+      if (statusFilter === 'Releasing Soon' && emp.status !== 'upcoming') return false;
+      if (statusFilter === 'Not Hiring' && emp.status !== 'not-employing') return false;
+
+      const searchStr = `${emp.name} ${emp.industry} ${emp.location} ${emp.tagline}`.toLowerCase();
+      return searchStr.includes(query.toLowerCase());
+    });
+  }, [employers, statusFilter, query]);
+
+  const handleNotify = (companyName) => {
+    if (notifiedCompanies.includes(companyName)) {
+      setNotifiedCompanies(current => current.filter(name => name !== companyName));
+      notify(`Alert cancelled for ${companyName}`);
+    } else {
+      setNotifiedCompanies(current => [...current, companyName]);
+      notify(`You will be notified when ${companyName} releases vacancies!`);
+    }
+  };
+
+  const handleViewJobs = (companyName) => {
+    setJobSearchQuery(companyName);
+    setActive('Find jobs');
+  };
+
+  const filters = ['All', 'Hiring Now', 'Releasing Soon', 'Not Hiring'];
+
+  return (
+    <section className="browse-page">
+      <div className="employers-hero">
+        <span className="eyebrow"><Icon name="briefcase" size={13}/> Global & Local Networks</span>
+        <h1>Meet the Employers.<br/><em>Who is hiring?</em></h1>
+        <p>Explore companies employing today, get alerts for upcoming roles, or follow their updates.</p>
+        
+        <div className="browse-search" style={{ marginTop: '22px', maxWidth: '620px' }}>
+          <Icon name="search"/>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search company name, industry, or location..."/>
+        </div>
+      </div>
+      
+      <div className="results-shell">
+        <aside className="filter-panel">
+          <b>Filter Employers</b>
+          <div className="filter-group">
+            <span>Hiring Status</span>
+            {filters.map(f => (
+              <button key={f} onClick={() => setStatusFilter(f)} className={statusFilter === f ? 'filter-choice checked' : 'filter-choice'}>
+                {f === 'Hiring Now' ? 'Hiring now' : f === 'Releasing Soon' ? 'Releasing soon' : f === 'Not Hiring' ? 'Not hiring' : f}
+                <span className={`status-dot-indicator ${f.toLowerCase().replace(' ', '-')}`} />
+              </button>
+            ))}
+          </div>
+          <div className="noexp-callout">
+            <Icon name="spark" size={15}/>
+            <div>
+              <b>Hiring updates</b>
+              <small>Employers update their status in real-time. Set alerts to be the first in line.</small>
+            </div>
+          </div>
+        </aside>
+        
+        <div className="search-results">
+          <div className="results-title">
+            <div>
+              <h2>{displayed.length} Employers found</h2>
+              <p>Hiring partners, growing platforms, and upcoming opportunities.</p>
+            </div>
+            <button className="sort-button">Alphabetical</button>
+          </div>
+          
+          <div className="employers-grid">
+            {displayed.length ? displayed.map(emp => {
+              const isNotified = notifiedCompanies.includes(emp.name);
+              return (
+                <div className="employer-card" key={emp.name}>
+                  <div className="employer-card-header">
+                    <div className="company-logo" style={{ background: emp.color, color: emp.text, fontSize: '20px', fontWeight: 'bold' }}>
+                      {emp.logo}
+                    </div>
+                    <div className="employer-card-meta">
+                      <h3>{emp.name}</h3>
+                      <span className="industry">{emp.industry}</span>
+                      <span className="location">{emp.location}</span>
+                    </div>
+                  </div>
+                  <p className="tagline">{emp.tagline}</p>
+                  
+                  <div className="employer-card-footer">
+                    {emp.status === 'employing' && (
+                      <>
+                        <span className="status-badge hiring">
+                          <span className="dot" /> Active: {emp.activeJobsCount} {emp.activeJobsCount === 1 ? 'role' : 'roles'}
+                        </span>
+                        <button className="card-action-btn view-jobs" onClick={() => handleViewJobs(emp.name)}>
+                          View jobs <Icon name="arrow" size={12}/>
+                        </button>
+                      </>
+                    )}
+                    {emp.status === 'upcoming' && (
+                      <>
+                        <span className="status-badge upcoming">
+                          <span className="dot" /> Upcoming ({emp.upcomingDate})
+                        </span>
+                        <button className={`card-action-btn notify-btn ${isNotified ? 'active' : ''}`} onClick={() => handleNotify(emp.name)}>
+                          {isNotified ? <><Icon name="check" size={12}/> Subscribed</> : 'Notify me'}
+                        </button>
+                      </>
+                    )}
+                    {emp.status === 'not-employing' && (
+                      <>
+                        <span className="status-badge closed">
+                          Not hiring
+                        </span>
+                        <button className="card-action-btn follow-btn" onClick={() => notify(`Following ${emp.name} for future updates`)}>
+                          Follow
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            }) : <div className="empty">No employers found matching your filters.</div>}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Applications({ applications, setActive }) {
   return <section className="applications-page"><div className="applications-head"><span className="eyebrow muted">My job search</span><h1>Keep moving forward.</h1><p>Everything you have applied for, in one calm place.</p></div><div className="application-summary"><div><b>{applications.length}</b><span>Applications sent</span></div><div><b>{applications.filter(a => a.status === 'Reviewing').length}</b><span>In review</span></div><div><b>{applications.filter(a => a.status === 'Interview').length}</b><span>Interviews</span></div></div>{applications.length ? <div className="application-list">{applications.map(app => <article className="application-row" key={app.id}><div className="company-logo" style={{ background: app.color, color: app.text }}>{app.logo}</div><div><b>{app.role}</b><span>{app.company} Â· Applied today</span></div><span className={`status ${app.status.toLowerCase()}`}>{app.status}</span><button>View application <Icon name="arrow" size={15}/></button></article>)}</div> : <div className="no-applications"><span className="empty-icon"><Icon name="briefcase" size={26}/></span><h2>Your application list is waiting.</h2><p>When you find a role you like, apply in one click and track your progress here.</p><button onClick={() => setActive('Find jobs')}>Find jobs <Icon name="arrow" size={16}/></button></div>}</section>;
 }
@@ -319,9 +541,55 @@ function Resumly({ setActive, notify }) {
 }
 
 function ApplicationModal({ job, onClose, onSubmit, onAudit }) {
-  const [note, setNote] = useState(''); const [cv, setCv] = useState('Alex_Morgan_CV.pdf');
+  const [note, setNote] = useState('');
+  const [name, setName] = useState('');
+  const [cvFile, setCvFile] = useState(null);
+  
   if (!job) return null;
-  return <div className="modal-backdrop" role="dialog" aria-modal="true"><form className="application-modal" onSubmit={e => { e.preventDefault(); onSubmit(job, note, cv); }}><button type="button" className="modal-close" onClick={onClose}>x</button><span className="eyebrow muted">Application</span><h2>Apply to {job.company}</h2><p className="modal-role">{job.role} Â· {job.place}</p><label>Choose a CV<select value={cv} onChange={e => setCv(e.target.value)}><option>Alex_Morgan_CV.pdf</option><option>Alex_Morgan_Design_CV.pdf</option></select></label><div className="ats-note"><span className="resumly-mini">R</span><div><b>Check this CV with Resumly.ai</b><small>Get keyword and format feedback before you send.</small></div><button type="button" onClick={onAudit}>Open audit</button></div><label>Short note to the hiring team<textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Tell the team why this role interests you..." /></label><button className="send-application" type="submit">Send application <Icon name="arrow" size={16}/></button></form></div>;
+  
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <form className="application-modal" onSubmit={e => { e.preventDefault(); onSubmit(job, note, cvFile?.name || 'CV'); }}>
+        <button type="button" className="modal-close" onClick={onClose}>x</button>
+        <span className="eyebrow muted">Application</span>
+        <h2>Apply to {job.company}</h2>
+        <p className="modal-role">{job.role} Â· {job.place}</p>
+        
+        <label>Full name
+          <input required value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" />
+        </label>
+        
+        <label>Upload your CV
+          <input required type="file" accept=".pdf,.doc,.docx" onChange={e => setCvFile(e.target.files?.[0])} style={{padding: '8px 10px', fontSize: '12px'}} />
+        </label>
+        
+        <div className="ats-note">
+          <span className="resumly-mini">R</span>
+          <div>
+            <b>Check this CV with Resumly.ai</b>
+            <small>Get keyword and format feedback before you send.</small>
+          </div>
+          <button type="button" onClick={onAudit}>Open audit</button>
+        </div>
+        
+        <div className="email-composer" style={{background: '#f8fbfd', border: '1px solid #dce4eb', borderRadius: '8px', padding: '15px', marginTop: '15px', textAlign: 'left'}}>
+          <div style={{borderBottom: '1px solid #dce4eb', paddingBottom: '10px', marginBottom: '10px', fontSize: '11px', color: '#596d7d'}}>
+            <div style={{marginBottom: '5px'}}><b>To:</b> hiring@{job.company.toLowerCase().replace(/\s+/g, '')}.com</div>
+            <div><b>Subject:</b> Application for {job.role} - {name || '[Your Name]'}</div>
+          </div>
+          <textarea 
+            required
+            value={note} 
+            onChange={e => setNote(e.target.value)} 
+            placeholder="Dear Hiring Team,&#10;&#10;I am writing to express my interest in the role...&#10;&#10;Best regards,&#10;[Your Name]" 
+            style={{border: 'none', background: 'transparent', width: '100%', minHeight: '120px', padding: '0', resize: 'vertical', fontSize: '12px', boxShadow: 'none'}} 
+          />
+        </div>
+        
+        <button className="send-application" type="submit" style={{marginTop: '20px'}}>Send application <Icon name="arrow" size={16}/></button>
+      </form>
+    </div>
+  );
 }
 
 function AuthPage({ onSignIn }) {
@@ -1258,6 +1526,72 @@ function ATSCheckers({ profile, onApply, notify }) {
     </section>
   );
 }
+function PrepDashboard({ setActive }) {
+  return (
+    <section className="prep-dashboard">
+      <div className="prep-hero">
+        <div className="prep-hero-copy">
+          <span className="eyebrow"><Icon name="spark" size={14}/> Interview Prep</span>
+          <h1>Walk into your next<br/><em>interview ready.</em></h1>
+          <p>A focused, practical space to shape your story, practise your answers and research with confidence.</p>
+          <div className="prep-hero-actions">
+            <button className="prep-primary" onClick={() => document.querySelector('.prep-simulator')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Start practising <Icon name="arrow" size={16}/></button>
+            <button className="prep-secondary" onClick={() => setActive('Discover')}>Back to home</button>
+          </div>
+        </div>
+        <div className="prep-progress-card">
+          <span>Today’s preparation</span>
+          <b>1 of 3 complete</b>
+          <div className="prep-progress"><i /></div>
+          <small>15–20 minutes to feel more prepared</small>
+        </div>
+      </div>
+      <div className="prep-content">
+        <article className="prep-module">
+          <div className="prep-module-head"><span className="prep-icon mint"><Icon name="briefcase" size={18}/></span><span className="prep-step">01</span></div>
+          <h3>Shape your story</h3>
+          <p>Use these common questions to make your experience memorable and clear.</p>
+          <ul className="prep-list">
+            <li>Tell me about yourself.</li>
+            <li>Why do you want to work here?</li>
+            <li>Describe a challenge you overcame.</li>
+          </ul>
+        </article>
+        <article className="prep-module prep-simulator">
+          <div className="prep-module-head"><span className="prep-icon peach"><Icon name="spark" size={18}/></span><span className="prep-step">02</span></div>
+          <h3>Practise out loud</h3>
+          <p>Start with a short answer. Aim for a clear beginning, example and result.</p>
+          <textarea placeholder="Type your answer to 'Tell me about yourself' here..." rows="4" className="prep-textarea"></textarea>
+          <span className="prep-tip">Tip: Keep your first answer under 90 seconds.</span>
+        </article>
+        <article className="prep-module">
+          <div className="prep-module-head"><span className="prep-icon lilac"><Icon name="search" size={18}/></span><span className="prep-step">03</span></div>
+          <h3>Know the company</h3>
+          <p>Before the conversation, look for their recent work, values and the problems this team is solving.</p>
+          <div className="prep-checklist"><span><Icon name="check" size={13}/> Latest news</span><span><Icon name="check" size={13}/> Values &amp; culture</span><span><Icon name="check" size={13}/> Role requirements</span></div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function PostApplyPromptModal({ job, onGoToPrep, onDismiss }) {
+  if (!job) return null;
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="application-modal post-apply-modal">
+        <span className="eyebrow muted">Application sent!</span>
+        <h2>Great job applying to {job.company}.</h2>
+        <p>While you wait for a response, it's a perfect time to start preparing.</p>
+        <div className="post-apply-actions">
+          <button className="primary-btn" onClick={onGoToPrep}>Go to Prep Dashboard <Icon name="arrow" size={16}/></button>
+          <button className="ghost-btn" onClick={onDismiss}>Maybe later</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [active, setActive] = useState('Discover');
   const [saved, setSaved] = useState([]);
@@ -1269,7 +1603,9 @@ function App() {
   const [employerJobs, setEmployerJobs] = useState([]);
   const [accountOpen, setAccountOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showPrepPrompt, setShowPrepPrompt] = useState(null);
   const [profile, setProfile] = useState({ name: '', email: '', headline: 'Early-career professional', location: 'Harare, Zimbabwe' });
+  const [jobSearchQuery, setJobSearchQuery] = useState('');
 
   // â”€â”€ 24/7 live job feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { jobs: liveJobs, source: feedSource, feedMessage, loading: feedLoading, lastRefreshed, refresh: refreshFeed } = useJobFeed({
@@ -1282,11 +1618,11 @@ function App() {
     ...(liveJobs.length > 0 ? liveJobs : jobs),
   ], [employerJobs, liveJobs]);
 
-  const nav = ['Find jobs', 'Early Career Programmes', 'My applications', 'ATS Checkers'];
+  const nav = ['Browse Employers', 'Find jobs', 'Early Career Programmes', 'My applications', 'ATS Checkers'];
   const notify = message => { setToast(message); setTimeout(() => setToast(''), 2300); };
   const save = id => { setSaved(current => current.includes(id) ? current.filter(savedId => savedId !== id) : [...current, id]); notify(saved.includes(id) ? 'Job removed from saved roles' : 'Job saved to your list'); };
   const apply = job => { if (applications.some(app => app.id === job.id)) return notify('You have already applied for this role'); setSelectedJob(job); };
-  const submitApplication = (job) => { setApplications(current => [...current, { ...job, status: current.length === 1 ? 'Interview' : 'Reviewing' }]); setSelectedJob(null); notify(`Application sent to ${job.company}`); };
+  const submitApplication = (job) => { setApplications(current => [...current, { ...job, status: current.length === 1 ? 'Interview' : 'Reviewing' }]); setSelectedJob(null); setShowPrepPrompt(job); notify(`Application sent to ${job.company}`); };
   const addEmployerJob = details => {
     const categoryNote = ['Internship', 'Apprenticeship'].includes(details.type) ? 'Also visible in Early Career Programmes' : 'Visible in Find jobs';
     setEmployerJobs(current => [{ ...details, id: `employer-${Date.now()}`, logo: details.company.slice(0, 1).toUpperCase(), color: '#e5f4dd', text: '#337044', time: 'Just now', salary: details.salary || 'Competitive', match: 'New opportunity', noExpNeeded: ['Internship', 'Apprenticeship', 'Entry level'].includes(details.type), categoryNote }, ...current]);
@@ -1330,6 +1666,7 @@ function App() {
       {topNav}
       <main><ATSCheckers profile={profile} onApply={apply} notify={notify}/></main>
       <ApplicationModal job={selectedJob} onClose={() => setSelectedJob(null)} onSubmit={submitApplication} onAudit={() => { setSelectedJob(null); setActive('ATS Checkers'); }}/>
+      <PostApplyPromptModal job={showPrepPrompt} onGoToPrep={() => { setShowPrepPrompt(null); setActive('PrepDashboard'); }} onDismiss={() => setShowPrepPrompt(null)} />
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
     </div>
   );
@@ -1339,6 +1676,7 @@ function App() {
       {topNav}
       <main><BrowseJobs programmesOnly jobList={liveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/></main>
       <ApplicationModal job={selectedJob} onClose={() => setSelectedJob(null)} onSubmit={submitApplication} onAudit={() => { setSelectedJob(null); setActive('Resumly.ai'); }}/>
+      <PostApplyPromptModal job={showPrepPrompt} onGoToPrep={() => { setShowPrepPrompt(null); setActive('PrepDashboard'); }} onDismiss={() => setShowPrepPrompt(null)} />
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
     </div>
   );
@@ -1348,14 +1686,17 @@ function App() {
       {topNav}
       <main>
         {active === 'Discover'          && <Discover setActive={setActive} notify={notify}/>}
-        {active === 'Find jobs'         && <BrowseJobs jobList={liveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
+        {active === 'Browse Employers'  && <BrowseEmployers setActive={setActive} jobList={liveJobList} notify={notify} setJobSearchQuery={setJobSearchQuery}/>}
+        {active === 'Find jobs'         && <BrowseJobs jobList={liveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply} initialQuery={jobSearchQuery} onClearInitialQuery={() => setJobSearchQuery('')}/>}
         {active === 'No Experience Needed' && <NoExpNeeded jobList={liveJobList} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
         {active === 'Internships'       && <BrowseJobs jobList={liveJobList} internshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
         {active === 'Apprenticeships'   && <BrowseJobs jobList={liveJobList} apprenticeshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
         {active === 'My applications'   && <Applications applications={applications} setActive={setActive}/>}
         {active === 'Resumly.ai'        && <Resumly setActive={setActive} notify={notify}/>}
+        {active === 'PrepDashboard'     && <PrepDashboard setActive={setActive} />}
       </main>
       <ApplicationModal job={selectedJob} onClose={() => setSelectedJob(null)} onSubmit={submitApplication} onAudit={() => { setSelectedJob(null); setActive('Resumly.ai'); }}/>
+      <PostApplyPromptModal job={showPrepPrompt} onGoToPrep={() => { setShowPrepPrompt(null); setActive('PrepDashboard'); }} onDismiss={() => setShowPrepPrompt(null)} />
       {profileOpen && <ProfileModal profile={profile} onClose={() => setProfileOpen(false)} onSave={details => { setProfile(current => ({ ...current, ...details })); setProfileOpen(false); notify('Profile settings saved'); }}/>}
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
     </div>
