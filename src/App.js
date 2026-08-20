@@ -226,8 +226,9 @@ function Discover({ setActive, notify }) {
     <section className="hero explore-hero"><div className="hero-copy"><span className="eyebrow"><Icon name="spark" size={14}/> Learn by following your curiosity</span><h1>Find the work you<br/><em>want to grow into.</em></h1><p>Explore a field at your own pace, try practical skills, and make small things you can be proud of.</p><button className="hero-cta" onClick={() => document.getElementById('field-explorer')?.scrollIntoView({ behavior: 'smooth' })}>Explore your interests <Icon name="arrow" size={18}/></button></div><div className="hero-art"><div className="sun"/><div className="abstract-card card-two"><span className="ring"/><b>Curiosity → skills</b></div><div className="profile-photo"><div className="photo-face">✦</div></div><div className="floating-badge"><span className="tick"><Icon name="check" size={16}/></span><div><b>Learning journey</b><small>One small step today</small></div></div></div></section>
     <section className="trust-row explore-trust"><div><b>10 min</b><small>to try a new skill</small></div><div><b>4 paths</b><small>made for exploring</small></div><div><b>100%</b><small>at your own pace</small></div><p>There is no right starting point—only the one that makes you want to keep going.</p></section>
     <section className="discover-hub" id="field-explorer"><div className="discover-heading"><div><span className="eyebrow muted">Your curiosity map</span><h2>What feels most like you?</h2><p>Pick a space to explore. You can change direction anytime.</p></div><span className="explore-note">Choose a field to open its studio ↓</span></div><div className="interest-grid">{Object.entries(fields).map(([title, item]) => <button key={title} onClick={() => choose(title)} className={`interest-card ${item.tone} ${interest === title ? 'selected' : ''}`}><span className="interest-symbol">{item.symbol}</span><div><b>{title}</b><small>{item.tagline}</small></div><span className="interest-arrow"><Icon name="arrow" size={15}/></span></button>)}</div>
+      {interest === 'Design & creative' ? <DesignJourney notify={notify} /> : <>
       <section className="field-studio"><div className="studio-heading"><div><span className="eyebrow muted">Now exploring · {interest}</span><h3>{field.intro}</h3></div><div className="studio-progress"><b>{completed.length}<small>/3</small></b><span>skills on your path</span><i><em style={{ width: `${Math.min(completed.length, 3) * 33.33}%` }}/></i></div></div><div className="studio-grid"><article className="studio-card skills-card"><span className="studio-kicker">Build your toolkit</span><h4>Pick skills to practise</h4><p>Start with a suggestion—or add a skill that matters to you.</p><div className="skill-choices">{field.skills.map(skill => <button key={skill} onClick={() => toggleSkill(skill)} className={completed.includes(skill) ? 'chosen' : ''}>{completed.includes(skill) ? <Icon name="check" size={13}/> : <span>+</span>}{skill}</button>)}</div><form className="custom-skill-form" onSubmit={addCustomSkill}><input value={customSkill} onChange={e => setCustomSkill(e.target.value)} placeholder="e.g. Photography, Excel, public speaking" aria-label="A skill you want to practise"/><button type="submit">Add mine</button></form></article><article className="studio-card sprint-card"><span className="studio-kicker">Try it today · 10 min</span><h4>{field.sprint}</h4><p>A low-pressure prompt to help you see whether this field clicks.</p><button onClick={() => { setSprintStarted(true); setSprintOpen(true); notify('Your 10-minute sprint has started'); }} className={sprintStarted ? 'sprint-active' : ''}>{sprintStarted ? <><Icon name="check" size={14}/> Continue sprint</> : <>Start the mini sprint <Icon name="arrow" size={15}/></>}</button></article><article className="studio-card project-card"><span className="studio-kicker">Make something real</span><div className="project-orbit"><span>01</span><span>02</span><span>03</span></div><h4>{field.project}</h4><p>Open a project now and shape it around the skills you want to practise.</p><button onClick={() => setProjectOpen(true)}>Open project <Icon name="arrow" size={15}/></button></article></div></section>
-      <div className="discovery-lower"><article className="path-card"><div className="path-copy"><span className="eyebrow">Your next gentle step</span><h3>Progress is built<br/><em>by trying things.</em></h3><p>Collect small proof of what you enjoy and what you are getting better at.</p><button onClick={() => document.getElementById('field-explorer')?.scrollIntoView({ behavior: 'smooth' })}>Keep exploring <Icon name="arrow" size={16}/></button></div><div className="path-steps">{['Choose a field','Pick two skills','Make a mini project'].map((step,index) => <div className={index < (completed.length >= 2 ? 3 : completed.length + 1) ? 'path-step done' : 'path-step'} key={step}><span>{index < (completed.length >= 2 ? 3 : completed.length + 1) ? <Icon name="check" size={13}/> : index + 1}</span><div><b>{step}</b><small>{index === 0 ? 'You are here' : index <= completed.length ? 'In progress' : 'Coming up'}</small></div></div>)}</div></article><article className="event-card learning-card"><span className="eyebrow muted">Learning room</span><h3>Meet people who are learning too</h3><p>Join a relaxed weekly session selected around your {interest.toLowerCase()} path.</p><div className="event-bottom"><small>{roomJoined ? (inRoom ? 'You are in the room' : 'Your place is saved') : 'Thursday · 5:30 PM'}</small><button onClick={() => roomJoined ? setLearningDashboardOpen(true) : setRoomOpen(true)}>{roomJoined ? <><Icon name="check" size={13}/> Learning dashboard</> : 'Join the room'}</button></div></article></div></section>
+      <div className="discovery-lower"><article className="path-card"><div className="path-copy"><span className="eyebrow">Your next gentle step</span><h3>Progress is built<br/><em>by trying things.</em></h3><p>Collect small proof of what you enjoy and what you are getting better at.</p><button onClick={() => document.getElementById('field-explorer')?.scrollIntoView({ behavior: 'smooth' })}>Keep exploring <Icon name="arrow" size={16}/></button></div><div className="path-steps">{['Choose a field','Pick two skills','Make a mini project'].map((step,index) => <div className={index < (completed.length >= 2 ? 3 : completed.length + 1) ? 'path-step done' : 'path-step'} key={step}><span>{index < (completed.length >= 2 ? 3 : completed.length + 1) ? <Icon name="check" size={13}/> : index + 1}</span><div><b>{step}</b><small>{index === 0 ? 'You are here' : index <= completed.length ? 'In progress' : 'Coming up'}</small></div></div>)}</div></article><article className="event-card learning-card"><span className="eyebrow muted">Learning room</span><h3>Meet people who are learning too</h3><p>Join a relaxed weekly session selected around your {interest.toLowerCase()} path.</p><div className="event-bottom"><small>{roomJoined ? (inRoom ? 'You are in the room' : 'Your place is saved') : 'Thursday · 5:30 PM'}</small><button onClick={() => roomJoined ? setLearningDashboardOpen(true) : setRoomOpen(true)}>{roomJoined ? <><Icon name="check" size={13}/> Learning dashboard</> : 'Join the room'}</button></div></article></div></>}</section>
     {projectOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Project workspace"><section className="project-workspace"><button className="workspace-close" onClick={() => setProjectOpen(false)} aria-label="Close project workspace">×</button><span className="eyebrow muted">Your project workspace · {interest}</span><h2>{projectTitle || field.project}</h2><p>Make this project yours. Use your own idea and the skills you want to develop.</p><label>Project name<input value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder={field.project}/></label><label>What do you want to make?<textarea value={projectIdea} onChange={e => setProjectIdea(e.target.value)} placeholder="Describe your idea, who it is for, and what you want it to do..."/></label><div className="workspace-skills"><b>Skills you will practise</b>{completed.length ? <div>{completed.map(skill => <button key={skill} onClick={() => toggleSkill(skill)}>{skill} ×</button>)}</div> : <small>Add your own skill above or choose a suggestion to personalise this project.</small>}</div><div className="workspace-footer"><small>{projectIdea.trim() ? 'Your project draft is ready to keep building.' : 'Start with a rough idea—there is no perfect first draft.'}</small><button onClick={async () => { try { await saveLearningProject({ title: projectTitle.trim() || field.project, idea: projectIdea.trim(), field: interest, skills: completed }); setProjectOpen(false); notify('Your project has been saved to your learning path'); } catch (error) { notify(error.message || 'Could not save your project'); } }}>Save project <Icon name="check" size={15}/></button></div></section></div>}
     {sprintOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Mini sprint"><section className="project-workspace sprint-workspace"><button className="workspace-close" onClick={() => setSprintOpen(false)} aria-label="Close mini sprint">×</button><span className="eyebrow muted">Your 10-minute mini sprint</span><h2>{field.sprint}</h2><p>There is no right answer. Follow the prompt, make a rough first attempt, and save one takeaway.</p><ol className="sprint-steps"><li><b>Notice</b><span>What problem, moment, or person could this improve?</span></li><li><b>Make</b><span>Sketch, write, map, or build one small first version.</span></li><li><b>Reflect</b><span>What would you try next with more time?</span></li></ol><label>My sprint note<textarea value={sprintNote} onChange={e => setSprintNote(e.target.value)} placeholder="Write a few words, paste a link, or capture your next step..."/></label><div className="workspace-footer"><small>{sprintNote.trim() ? 'Nice—your thinking is captured.' : 'Even one sentence is a useful start.'}</small><button onClick={async () => { try { await saveSprint({ field: interest, prompt: field.sprint, note: sprintNote.trim() }); setSprintOpen(false); notify('Your mini sprint has been saved'); } catch (error) { notify(error.message || 'Could not save your mini sprint'); } }}>Save sprint <Icon name="check" size={15}/></button></div></section></div>}
     {roomOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Join learning room"><section className="project-workspace room-workspace"><button className="workspace-close" onClick={() => setRoomOpen(false)} aria-label="Close learning room">×</button><span className="eyebrow muted">Your recommended learning room</span><h2>{interest} makers room</h2><p>We will introduce you to people exploring {interest.toLowerCase()} and working on similar skills.</p><div className="room-match"><b>Your room is shaped around</b><span>{completed.length ? completed.slice(0, 3).join(' · ') : `your interest in ${interest}`}</span></div><label>What would you like from the room?<select value={roomGoal} onChange={e => setRoomGoal(e.target.value)}><option>Get feedback on an idea</option><option>Practise a skill with others</option><option>Find inspiration for a project</option><option>Meet people exploring this field</option></select></label><div className="workspace-footer"><small>Thursday, 5:30 PM · You can leave anytime.</small><button onClick={async () => { try { await joinLearningRoom({ field: interest, goal: roomGoal, skills: completed }); setRoomJoined(true); setRoomOpen(false); setLearningDashboardOpen(true); notify(`You joined the ${interest} makers room to ${roomGoal.toLowerCase()}`); } catch (error) { notify(error.message || 'Could not join this room'); } }}>Confirm my place <Icon name="check" size={15}/></button></div></section></div>}
@@ -1756,6 +1757,557 @@ function App() {
         try { const { data: { user } } = await supabase.auth.getUser(); if (!user) throw new Error('Please sign in again.'); const { error } = await supabase.from('profiles').update({ full_name: details.name, headline: details.headline, location: details.location }).eq('id', user.id); if (error) throw error; setProfile(current => ({ ...current, ...details })); setProfileOpen(false); notify('Profile settings saved'); } catch (error) { notify(error.message || 'Could not save profile settings'); }
       }}/>}
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
+    </div>
+  );
+}
+
+
+
+/* ── DesignJourney ──────────────────────────────────────────────────────── */
+function DesignJourney({ notify }) {
+  const [started, setStarted] = useState(false);
+  const [journeyStep, setJourneyStep] = useState(1);
+
+  // Step 1 — Problem
+  const [problem, setProblem] = useState('');
+
+  // Step 2 — People
+  const [userType, setUserType] = useState('');
+  const [userGoals, setUserGoals] = useState('');
+  const [userFrustrations, setUserFrustrations] = useState('');
+  const [userNeeds, setUserNeeds] = useState('');
+  const [userBehavior, setUserBehavior] = useState('');
+
+  // Step 3 — Journey map
+  const [journeySteps, setJourneySteps] = useState([
+    { label: '', tags: [] },
+    { label: '', tags: [] },
+    { label: '', tags: [] },
+  ]);
+
+  // Step 4 — Solution
+  const [solutionType, setSolutionType] = useState('');
+  const [solutionIdea, setSolutionIdea] = useState('');
+
+  // Step 5 — Experience / User flow
+  const [flowSteps, setFlowSteps] = useState([
+    { screen: '', sees: '', canDo: '', next: '', feeling: '' },
+    { screen: '', sees: '', canDo: '', next: '', feeling: '' },
+    { screen: '', sees: '', canDo: '', next: '', feeling: '' },
+  ]);
+
+  // Step 6 — Prototype
+  const [protoScreens, setProtoScreens] = useState([
+    { name: 'Screen 1', desc: '' },
+    { name: 'Screen 2', desc: '' },
+    { name: 'Screen 3', desc: '' },
+  ]);
+
+  // Step 7 — Test
+  const [testTask, setTestTask] = useState('');
+  const [testFeedback, setTestFeedback] = useState({ confusing: '', stuck: '', expected: '', change: '' });
+
+  // Step 8 — Improve
+  const [learned, setLearned] = useState('');
+  const [willChange, setWillChange] = useState('');
+
+  const STEPS = ['Problem', 'People', 'Journey', 'Solution', 'Experience', 'Prototype', 'Test', 'Improve'];
+
+  const canGoNext = () => {
+    if (journeyStep === 1) return problem.trim().length > 0;
+    if (journeyStep === 2) return userType.trim().length > 0;
+    if (journeyStep === 3) return journeySteps.some(s => s.label.trim());
+    if (journeyStep === 4) return solutionType && solutionIdea.trim();
+    if (journeyStep === 5) return flowSteps.some(s => s.screen.trim());
+    if (journeyStep === 6) return protoScreens.some(s => s.desc.trim());
+    if (journeyStep === 7) return testTask.trim().length > 0;
+    return true;
+  };
+
+  const goNext = () => {
+    if (journeyStep < 8) { setJourneyStep(s => s + 1); notify(`Step ${journeyStep + 1}: ${STEPS[journeyStep]} unlocked`); }
+    else { notify('Your design journey is complete! 🎉'); }
+  };
+
+  const updateJourneyStep = (index, field, value) => {
+    setJourneySteps(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  };
+  const toggleTag = (index, tag) => {
+    setJourneySteps(prev => prev.map((s, i) => i === index ? {
+      ...s, tags: s.tags.includes(tag) ? s.tags.filter(t => t !== tag) : [...s.tags, tag]
+    } : s));
+  };
+  const addJourneyStep = () => setJourneySteps(prev => [...prev, { label: '', tags: [] }]);
+  const removeJourneyStep = (index) => setJourneySteps(prev => prev.filter((_, i) => i !== index));
+
+  const updateFlowStep = (index, field, value) => {
+    setFlowSteps(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  };
+  const addFlowStep = () => { if (flowSteps.length < 5) setFlowSteps(prev => [...prev, { screen: '', sees: '', canDo: '', next: '', feeling: '' }]); };
+
+  const updateProtoScreen = (index, field, value) => {
+    setProtoScreens(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  };
+
+  const SOLUTION_TYPES = [
+    { key: 'improve', icon: '⬆', label: 'Improve', desc: 'Make an existing experience easier.' },
+    { key: 'simplify', icon: '✂', label: 'Simplify', desc: 'Remove unnecessary steps.' },
+    { key: 'connect', icon: '🔗', label: 'Connect', desc: 'Bring different parts together.' },
+    { key: 'create', icon: '✦', label: 'Create', desc: 'Build something completely new.' },
+  ];
+
+  const PRACTICE_CARDS = [
+    { icon: '🔍', title: 'Identify a problem', desc: 'Spot something frustrating in everyday life and frame it as a design problem.', action: 'Spot a problem' },
+    { icon: '👤', title: 'Create a persona', desc: 'Define who you are designing for by building a simple user profile.', action: 'Build a persona' },
+    { icon: '🗺', title: 'Map a user journey', desc: 'Draw the steps someone takes to reach a goal — before your solution exists.', action: 'Map a journey' },
+    { icon: '🔴', title: 'Find pain points', desc: 'Look at a current experience and mark where it breaks down for users.', action: 'Find pain points' },
+    { icon: '💡', title: 'Sketch a solution', desc: 'Turn your idea into a rough sketch or written description of a better experience.', action: 'Sketch it out' },
+    { icon: '📱', title: 'Create a 3-screen flow', desc: 'Design three key screens that walk a user through your core experience.', action: 'Build the flow' },
+    { icon: '🧪', title: 'Run a usability test', desc: 'Give someone a task and watch — without helping — to see where they get stuck.', action: 'Run a test' },
+    { icon: '🔁', title: 'Improve a design', desc: 'Take feedback and make your design better. Good design is never finished.', action: 'Start iterating' },
+  ];
+
+  if (!started) {
+    return (
+      <div className="dj-root">
+        {/* Hero */}
+        <section className="dj-hero">
+          <div className="dj-hero-copy">
+            <span className="eyebrow dj-eyebrow">Design &amp; Creative</span>
+            <h2 className="dj-hero-h">Turn a problem into an experience.</h2>
+            <p className="dj-hero-p">Start with a real problem, understand the people behind it, explore solutions, and turn your idea into something people can actually use.</p>
+            <div className="dj-hero-actions">
+              <button className="dj-cta-primary" onClick={() => setStarted(true)}>
+                Start a design journey <Icon name="arrow" size={16}/>
+              </button>
+              <button className="dj-cta-ghost" onClick={() => document.getElementById('dj-lab')?.scrollIntoView({ behavior: 'smooth' })}>
+                Explore design challenges
+              </button>
+            </div>
+          </div>
+          <div className="dj-hero-art">
+            <div className="dj-art-ring dj-art-ring--lg"/>
+            <div className="dj-art-ring dj-art-ring--sm"/>
+            <div className="dj-journey-path">
+              {['Problem', 'People', 'Solution', 'Experience'].map((label, i) => (
+                <div key={label} className="dj-path-node" style={{ animationDelay: `${i * 0.15}s` }}>
+                  <span>{i + 1}</span>
+                  <b>{label}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Practice Lab */}
+        <section className="dj-lab" id="dj-lab">
+          <div className="dj-lab-header">
+            <span className="eyebrow muted">Practice Lab</span>
+            <h3 className="dj-lab-title">Warm up with a design challenge</h3>
+            <p className="dj-lab-sub">Pick an activity to practise one part of the design process. No experience needed.</p>
+          </div>
+          <div className="dj-lab-grid">
+            {PRACTICE_CARDS.map(card => (
+              <article key={card.title} className="dj-lab-card">
+                <span className="dj-lab-icon">{card.icon}</span>
+                <h4 className="dj-lab-card-title">{card.title}</h4>
+                <p className="dj-lab-card-desc">{card.desc}</p>
+                <button className="dj-lab-card-btn" onClick={() => { setStarted(true); notify(`${card.title} activity started`); }}>
+                  {card.action} <Icon name="arrow" size={13}/>
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dj-root">
+      {/* Progress stepper */}
+      <div className="dj-stepper">
+        <div className="dj-stepper-inner">
+          {STEPS.map((name, index) => {
+            const num = index + 1;
+            const done = num < journeyStep;
+            const active = num === journeyStep;
+            return (
+              <button
+                key={name}
+                className={`dj-step${done ? ' dj-step--done' : ''}${active ? ' dj-step--active' : ''}`}
+                onClick={() => done || active ? setJourneyStep(num) : null}
+                disabled={num > journeyStep}
+              >
+                <span className="dj-step-dot">{done ? <Icon name="check" size={11}/> : num}</span>
+                <span className="dj-step-label">{name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <button className="dj-stepper-exit" onClick={() => setStarted(false)}>Exit journey</button>
+      </div>
+
+      {/* Step panels */}
+      <div className="dj-panel-wrap">
+
+        {/* ─ Step 1: Problem ─ */}
+        {journeyStep === 1 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 1 · Problem</span>
+              <h3 className="dj-panel-h">What problem do you want to solve?</h3>
+              <p className="dj-panel-desc">Great experiences start with real problems. Tell us what you're trying to improve.</p>
+            </div>
+            <div className="dj-panel-body">
+              <label className="dj-label">Describe the problem
+                <textarea
+                  className="dj-textarea dj-textarea--lg"
+                  placeholder="e.g. Job seekers in Zimbabwe struggle to find verified opportunities without spending hours on WhatsApp groups…"
+                  value={problem}
+                  onChange={e => setProblem(e.target.value)}
+                />
+              </label>
+              <div className="dj-prompt-grid">
+                <span className="dj-prompt-label">Helpful prompts</span>
+                {[
+                  'Who is experiencing this problem?',
+                  'What makes it difficult today?',
+                  'How are people solving it currently?',
+                  'Why does this problem matter?',
+                ].map(p => (
+                  <button key={p} className="dj-prompt-chip" onClick={() => setProblem(prev => prev ? `${prev}\n\n${p} ` : `${p} `)}>
+                    + {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─ Step 2: People ─ */}
+        {journeyStep === 2 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 2 · People</span>
+              <h3 className="dj-panel-h">Who are you designing for?</h3>
+              <p className="dj-panel-desc">Define your user before you design for them. The more you understand their world, the better your solution will be.</p>
+            </div>
+            <div className="dj-panel-body dj-panel-body--two-col">
+              <div className="dj-fields">
+                <label className="dj-label">User type
+                  <input className="dj-input" placeholder="e.g. Recent graduate, first-time job seeker" value={userType} onChange={e => setUserType(e.target.value)}/>
+                </label>
+                <label className="dj-label">Goals
+                  <textarea className="dj-textarea" placeholder="What does this person want to achieve?" value={userGoals} onChange={e => setUserGoals(e.target.value)}/>
+                </label>
+                <label className="dj-label">Frustrations
+                  <textarea className="dj-textarea" placeholder="What makes their life harder right now?" value={userFrustrations} onChange={e => setUserFrustrations(e.target.value)}/>
+                </label>
+                <label className="dj-label">Needs
+                  <textarea className="dj-textarea" placeholder="What do they actually need — not just want?" value={userNeeds} onChange={e => setUserNeeds(e.target.value)}/>
+                </label>
+                <label className="dj-label">Current behaviour
+                  <textarea className="dj-textarea" placeholder="What do they do today to solve this problem?" value={userBehavior} onChange={e => setUserBehavior(e.target.value)}/>
+                </label>
+              </div>
+              {userType && (
+                <div className="dj-persona-card">
+                  <div className="dj-persona-avatar">{userType.charAt(0).toUpperCase()}</div>
+                  <span className="dj-persona-tag">User Snapshot</span>
+                  <h4 className="dj-persona-name">{userType}</h4>
+                  {userGoals && <div className="dj-persona-row"><b>Goals</b><span>{userGoals}</span></div>}
+                  {userFrustrations && <div className="dj-persona-row dj-persona-row--red"><b>Frustrations</b><span>{userFrustrations}</span></div>}
+                  {userNeeds && <div className="dj-persona-row"><b>Needs</b><span>{userNeeds}</span></div>}
+                  {userBehavior && <div className="dj-persona-row dj-persona-row--muted"><b>Behaviour</b><span>{userBehavior}</span></div>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─ Step 3: Journey Map ─ */}
+        {journeyStep === 3 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 3 · Journey</span>
+              <h3 className="dj-panel-h">Map the current experience</h3>
+              <p className="dj-panel-desc">Write out the steps your user takes today. Then tag each one with a pain point, frustration, or opportunity.</p>
+            </div>
+            <div className="dj-panel-body">
+              <div className="dj-jmap">
+                {journeySteps.map((step, i) => (
+                  <div key={i} className="dj-jmap-step">
+                    <div className="dj-jmap-num">{i + 1}</div>
+                    <div className="dj-jmap-content">
+                      <input
+                        className="dj-input"
+                        placeholder={`Step ${i + 1}, e.g. Search WhatsApp groups`}
+                        value={step.label}
+                        onChange={e => updateJourneyStep(i, 'label', e.target.value)}
+                      />
+                      <div className="dj-jmap-tags">
+                        {[['pain', '🔴', 'Pain point'], ['friction', '🟡', 'Frustration'], ['opp', '🟢', 'Opportunity']].map(([key, emoji, text]) => (
+                          <button
+                            key={key}
+                            className={`dj-tag-btn${step.tags.includes(key) ? ' dj-tag-btn--active' : ''}`}
+                            onClick={() => toggleTag(i, key)}
+                          >
+                            {emoji} {text}
+                          </button>
+                        ))}
+                        {journeySteps.length > 2 && (
+                          <button className="dj-tag-btn dj-tag-btn--remove" onClick={() => removeJourneyStep(i)}>✕ Remove</button>
+                        )}
+                      </div>
+                    </div>
+                    {i < journeySteps.length - 1 && <div className="dj-jmap-arrow">→</div>}
+                  </div>
+                ))}
+                {journeySteps.length < 8 && (
+                  <button className="dj-add-step-btn" onClick={addJourneyStep}>+ Add step</button>
+                )}
+              </div>
+              <div className="dj-jmap-legend">
+                <span>🔴 Pain points</span>
+                <span>🟡 Frustrations</span>
+                <span>🟢 Opportunities</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─ Step 4: Solution ─ */}
+        {journeyStep === 4 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 4 · Solution</span>
+              <h3 className="dj-panel-h">What could make this experience better?</h3>
+              <p className="dj-panel-desc">Pick an approach that fits the problem you found. There is no wrong answer — the best solution comes from understanding your user.</p>
+            </div>
+            <div className="dj-panel-body">
+              <div className="dj-sol-grid">
+                {SOLUTION_TYPES.map(sol => (
+                  <button
+                    key={sol.key}
+                    className={`dj-sol-card${solutionType === sol.key ? ' dj-sol-card--active' : ''}`}
+                    onClick={() => setSolutionType(sol.key)}
+                  >
+                    <span className="dj-sol-icon">{sol.icon}</span>
+                    <b className="dj-sol-label">{sol.label}</b>
+                    <span className="dj-sol-desc">{sol.desc}</span>
+                  </button>
+                ))}
+              </div>
+              {solutionType && (
+                <label className="dj-label dj-label--mt">Describe your solution idea
+                  <textarea
+                    className="dj-textarea dj-textarea--lg"
+                    placeholder="What would you build, change, or create? How would it help your user?"
+                    value={solutionIdea}
+                    onChange={e => setSolutionIdea(e.target.value)}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─ Step 5: Experience / User Flow ─ */}
+        {journeyStep === 5 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 5 · Experience</span>
+              <h3 className="dj-panel-h">Shape the experience</h3>
+              <p className="dj-panel-desc">Design your user's journey through your solution. Think about what they see, what they can do, and how you want them to feel.</p>
+            </div>
+            <div className="dj-panel-body">
+              <div className="dj-flow-trail">
+                {flowSteps.map((step, i) => (
+                  <div key={i} className="dj-flow-card">
+                    <div className="dj-flow-card-header">
+                      <span className="dj-flow-num">{i + 1}</span>
+                      <input className="dj-input dj-input--inline" placeholder={`Screen name, e.g. Home`} value={step.screen} onChange={e => updateFlowStep(i, 'screen', e.target.value)}/>
+                    </div>
+                    <div className="dj-flow-fields">
+                      <label className="dj-label">What the user sees
+                        <input className="dj-input" placeholder="e.g. A list of verified jobs near them" value={step.sees} onChange={e => updateFlowStep(i, 'sees', e.target.value)}/>
+                      </label>
+                      <label className="dj-label">What they can do
+                        <input className="dj-input" placeholder="e.g. Filter by role, save a job, apply" value={step.canDo} onChange={e => updateFlowStep(i, 'canDo', e.target.value)}/>
+                      </label>
+                      <label className="dj-label">What happens next
+                        <input className="dj-input" placeholder="e.g. Goes to job details screen" value={step.next} onChange={e => updateFlowStep(i, 'next', e.target.value)}/>
+                      </label>
+                      <label className="dj-label">Desired feeling
+                        <input className="dj-input" placeholder="e.g. Confident, excited, informed" value={step.feeling} onChange={e => updateFlowStep(i, 'feeling', e.target.value)}/>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {flowSteps.length < 5 && (
+                <button className="dj-add-step-btn" onClick={addFlowStep}>+ Add screen</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─ Step 6: Prototype ─ */}
+        {journeyStep === 6 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 6 · Prototype</span>
+              <h3 className="dj-panel-h">Make something real</h3>
+              <p className="dj-panel-desc">Create a simple 3-screen experience. Don't worry about making it perfect — the goal is to have something you can show someone and get feedback on.</p>
+            </div>
+            <div className="dj-panel-body">
+              <div className="dj-proto-grid">
+                {protoScreens.map((screen, i) => (
+                  <div key={i} className="dj-proto-screen">
+                    <div className="dj-proto-phone">
+                      <div className="dj-proto-notch"/>
+                      <div className="dj-proto-content">
+                        <span className="dj-proto-label">{screen.name}</span>
+                        <textarea
+                          className="dj-proto-textarea"
+                          placeholder="What's on this screen? Describe what the user sees and can do…"
+                          value={screen.desc}
+                          onChange={e => updateProtoScreen(i, 'desc', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <input
+                      className="dj-input dj-proto-name-input"
+                      placeholder="Screen name"
+                      value={screen.name}
+                      onChange={e => updateProtoScreen(i, 'name', e.target.value)}
+                    />
+                    {i < protoScreens.length - 1 && <div className="dj-proto-arrow">→</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─ Step 7: Test ─ */}
+        {journeyStep === 7 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 7 · Test</span>
+              <h3 className="dj-panel-h">Does it actually work?</h3>
+              <p className="dj-panel-desc">Give someone a task. Watch what they do — without helping them. Record what you see and hear. This is where great design is found.</p>
+            </div>
+            <div className="dj-panel-body">
+              <label className="dj-label">The task you're testing
+                <input
+                  className="dj-input"
+                  placeholder={`e.g. "Find a software internship and apply using this app."`}
+                  value={testTask}
+                  onChange={e => setTestTask(e.target.value)}
+                />
+              </label>
+              <div className="dj-test-grid">
+                {[
+                  ['confusing', '😕', 'What was confusing?', 'What did they not understand?'],
+                  ['stuck', '🚧', 'Where did they get stuck?', 'Which step caused a pause or wrong move?'],
+                  ['expected', '💭', 'What did they expect?', 'What did they think would happen?'],
+                  ['change', '✏', 'What would they change?', 'Their exact words if possible'],
+                ].map(([key, icon, label, placeholder]) => (
+                  <label key={key} className="dj-label dj-test-field">
+                    <span className="dj-test-icon">{icon}</span> {label}
+                    <textarea
+                      className="dj-textarea"
+                      placeholder={placeholder}
+                      value={testFeedback[key]}
+                      onChange={e => setTestFeedback(prev => ({ ...prev, [key]: e.target.value }))}
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─ Step 8: Improve ─ */}
+        {journeyStep === 8 && (
+          <div className="dj-panel">
+            <div className="dj-panel-meta">
+              <span className="eyebrow muted">Step 8 · Improve</span>
+              <h3 className="dj-panel-h">Learn. Improve. Repeat.</h3>
+              <p className="dj-panel-desc">Good design is never finished — it's improved. Use what you learned from testing to make your experience better.</p>
+            </div>
+            <div className="dj-panel-body">
+              <div className="dj-iteration-track">
+                <div className="dj-iter-node dj-iter-node--done"><span>V1</span><b>Version 1</b><small>Your first design</small></div>
+                <div className="dj-iter-arrow">→</div>
+                <div className="dj-iter-node dj-iter-node--feedback"><span>💬</span><b>Feedback</b><small>What you learned</small></div>
+                <div className="dj-iter-arrow">→</div>
+                <div className="dj-iter-node dj-iter-node--v2"><span>V2</span><b>Version 2</b><small>Your improved design</small></div>
+              </div>
+              <div className="dj-improve-fields">
+                <label className="dj-label">What did I learn?
+                  <textarea
+                    className="dj-textarea dj-textarea--lg"
+                    placeholder="What surprised you? What did users struggle with that you didn't expect?"
+                    value={learned}
+                    onChange={e => setLearned(e.target.value)}
+                  />
+                </label>
+                <label className="dj-label">What will I change?
+                  <textarea
+                    className="dj-textarea dj-textarea--lg"
+                    placeholder="List the specific changes you'd make in Version 2…"
+                    value={willChange}
+                    onChange={e => setWillChange(e.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="dj-nav">
+          {journeyStep > 1 && (
+            <button className="dj-nav-back" onClick={() => setJourneyStep(s => s - 1)}>
+              ← Back
+            </button>
+          )}
+          <div className="dj-nav-right">
+            <span className="dj-nav-hint">{journeyStep < 8 ? `Step ${journeyStep} of 8` : 'Final step'}</span>
+            <button
+              className="dj-nav-next"
+              onClick={goNext}
+              disabled={!canGoNext()}
+            >
+              {journeyStep < 8 ? <>Continue <Icon name="arrow" size={15}/></> : <>Complete journey <Icon name="check" size={15}/></>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Practice Lab below journey */}
+      <section className="dj-lab dj-lab--journey" id="dj-lab">
+        <div className="dj-lab-header">
+          <span className="eyebrow muted">Practice Lab</span>
+          <h3 className="dj-lab-title">Focused design activities</h3>
+          <p className="dj-lab-sub">Practise individual parts of the design process in short, focused activities.</p>
+        </div>
+        <div className="dj-lab-grid">
+          {PRACTICE_CARDS.map(card => (
+            <article key={card.title} className="dj-lab-card">
+              <span className="dj-lab-icon">{card.icon}</span>
+              <h4 className="dj-lab-card-title">{card.title}</h4>
+              <p className="dj-lab-card-desc">{card.desc}</p>
+              <button className="dj-lab-card-btn" onClick={() => notify(`${card.title} activity started`)}>
+                {card.action} <Icon name="arrow" size={13}/>
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
