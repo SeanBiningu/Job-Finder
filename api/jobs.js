@@ -21,6 +21,7 @@ const normalize = (job, index) => ({
   tags: (job.technologies || job.skills || []).slice(0, 2).map(String),
   match: 'New opportunity',
   url: job.url || job.job_url || job.application_url,
+  noExpNeeded: /intern|apprentice|trainee|entry|junior|graduate|assistant/i.test(job.job_title || ''),
 });
 
 export default async function handler(req, res) {
