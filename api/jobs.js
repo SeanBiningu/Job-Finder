@@ -49,8 +49,7 @@ export default async function handler(req, res) {
   const apprenticeshipOnly = req.query.apprenticeship === 'true';
   const fallbackResults = message => {
     const needle = `${query} ${location}`.toLowerCase();
-    const jobs = fallback.filter(job => (!internshipOnly || job.type === 'Internship') && (!apprenticeshipOnly || job.type === 'Apprenticeship') && (!needle || `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(needle)));
-    return res.status(200).json({ jobs, source: 'fallback', message });
+    return res.status(200).json({ jobs: [], source: 'fallback', message });
   };
   const appId = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;

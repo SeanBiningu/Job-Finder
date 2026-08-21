@@ -29,9 +29,7 @@ module.exports = function setupProxy(app) {
   app.use('/api/jobs', async (req, res) => {
     const query = String(req.query.query || '').trim(); const location = String(req.query.location || '').trim(); const internshipOnly = req.query.internship === 'true'; const apprenticeshipOnly = req.query.apprenticeship === 'true';
     const fallback = message => {
-      const needle = `${query} ${location}`.trim().toLowerCase();
-      const jobs = demoJobs.filter(job => (!internshipOnly || job.type === 'Internship') && (!apprenticeshipOnly || job.type === 'Apprenticeship') && (!needle || `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(needle)));
-      return res.status(200).json({ jobs, source: 'fallback', message });
+      return res.status(200).json({ jobs: [], source: 'fallback', message });
     };
     if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) return fallback('Adzuna is not configured. Showing the demo feed.');
     try {

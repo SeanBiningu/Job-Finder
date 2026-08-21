@@ -6,6 +6,7 @@ import './App.css';
 import { searchJobs } from './services/jobSearch';
 import { useJobFeed } from './services/useJobFeed';
 import { supabase } from './services/supabase';
+import { createEmployerJob, deleteEmployerJob, loadEmployerJobs } from './services/employerJobs';
 import { joinLearningRoom, saveLearningProject, saveSprint } from './services/learningData';
 
 // PDF.js needs a dedicated worker to read uploaded PDF text in the browser.
@@ -242,7 +243,7 @@ function Discover({ setActive, notify }) {
   </>;
 }
 
-function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved, applications, onSave, onApply, jobList = jobs, initialQuery, onClearInitialQuery }) {
+function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved, applications, onSave, onApply, jobList = jobs, feedSource = 'sample', feedMessage: initialFeedMessage = '', initialQuery, onClearInitialQuery }) {
   const categoryOnly = internshipOnly ? 'Internship' : apprenticeshipOnly ? 'Apprenticeship' : null;
   const [query, setQuery] = useState('');
   useEffect(() => {
@@ -251,7 +252,8 @@ function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved,
       if (onClearInitialQuery) onClearInitialQuery();
     }
   }, [initialQuery, onClearInitialQuery]);
-  const [location, setLocation] = useState(categoryOnly ? 'Zimbabwe' : 'Zimbabwe, Remote'); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [noExperienceOnly, setNoExperienceOnly] = useState(false); const [liveJobs, setLiveJobs] = useState(jobList); const [searching, setSearching] = useState(false); const [source, setSource] = useState('sample'); const [feedMessage, setFeedMessage] = useState(''); const [error, setError] = useState('');
+  const [location, setLocation] = useState(''); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [noExperienceOnly, setNoExperienceOnly] = useState(false); const [liveJobs, setLiveJobs] = useState(jobList); const [searching, setSearching] = useState(false); const [source, setSource] = useState(feedSource); const [feedMessage, setFeedMessage] = useState(initialFeedMessage); const [error, setError] = useState('');
+  useEffect(() => { setLiveJobs(jobList); setSource(feedSource); setFeedMessage(initialFeedMessage); }, [jobList, feedSource, initialFeedMessage]);
   const displayed = useMemo(() => liveJobs.filter(job => (!categoryOnly || job.type === categoryOnly) && (!programmesOnly || ['Internship', 'Apprenticeship'].includes(job.type)) && (type === 'All' || job.type === type) && (!remote || job.place === 'Remote') && (!noExperienceOnly || job.noExpNeeded) && `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [categoryOnly, programmesOnly, type, remote, noExperienceOnly, query, liveJobs]);
   const filters = programmesOnly ? ['All', 'Internship', 'Apprenticeship', 'Remote'] : internshipOnly ? ['All', 'Remote', 'Marketing', 'Tech'] : apprenticeshipOnly ? ['All', 'Remote', 'Tech', 'Business'] : ['All', 'Full-time', 'Graduate', 'Entry level'];
   const hero = internshipOnly
@@ -263,7 +265,7 @@ function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved,
       : { eyebrow: 'Job search', title: 'Find your next opportunity.', copy: 'Search entry-level roles in Zimbabwe and around the world.', placeholder: 'Search job title, skill or company' };
   const setFilter = filter => { if (filter === 'Remote') setRemote(!remote); else { setType(filter); setRemote(false); } };
   const runSearch = async () => { setSearching(true); setError(''); try { const result = await searchJobs({ query, location, internshipOnly, apprenticeshipOnly }); setLiveJobs(result.jobs); setSource(result.source); setFeedMessage(result.message || ''); } catch (err) { setError('We could not reach the job feed. Please try again.'); } finally { setSearching(false); } };
-  return <section className="browse-page"><div className="browse-hero"><span className="eyebrow">{hero.eyebrow}</span><h1>{hero.title}</h1><p>{hero.copy}</p><div className="browse-search"><Icon name="search"/><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder={hero.placeholder}/><Icon name="map"/><input className="location-search" value={location} onChange={e => setLocation(e.target.value)} placeholder="Zimbabwe, Remote or anywhere"/><button onClick={runSearch} disabled={searching}>{searching ? 'Searching...' : 'Search'}</button></div></div><div className="results-shell"><aside className="filter-panel"><b>Refine your search</b><div className="filter-group"><span>Role type</span>{filters.map(filter => <button key={filter} onClick={() => setFilter(filter)} className={(type === filter || (filter === 'Remote' && remote)) ? 'filter-choice checked' : 'filter-choice'}>{filter === 'Remote' ? 'Remote only' : filter}<i/></button>)}</div><div className="filter-group"><span>Experience</span><button onClick={() => setNoExperienceOnly(value => !value)} className={noExperienceOnly ? 'filter-choice checked' : 'filter-choice'}>No experience needed<i/></button><button className="filter-choice">0-2 years<i/></button></div></aside><div className="search-results"><div className="results-title"><div><h2>{displayed.length} opportunities found</h2><p>{noExperienceOnly ? 'Showing roles that welcome applicants with no prior experience.' : source === 'adzuna' ? 'Live results powered by Adzuna.' : source === 'fallback' ? feedMessage : 'Matches based on your profile and search.'}</p></div><button className="sort-button">Most relevant</button></div>{error && <div className="search-error">{error}</div>}<div className="jobs-list">{displayed.length ? displayed.map(job => <JobCard key={job.id} job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>) : <div className="empty">No opportunities match these filters. Try changing your search.</div>}</div></div></div></section>;
+  return <section className="browse-page"><div className="browse-hero"><span className="eyebrow">{hero.eyebrow}</span><h1>{hero.title}</h1><p>{hero.copy}</p><div className="browse-search"><Icon name="search"/><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder={hero.placeholder}/><Icon name="map"/><input className="location-search" value={location} onChange={e => setLocation(e.target.value)} placeholder="City, province, or Remote"/><button onClick={runSearch} disabled={searching}>{searching ? 'Searching...' : 'Search'}</button></div></div><div className="results-shell"><aside className="filter-panel"><b>Refine your search</b><div className="filter-group"><span>Role type</span>{filters.map(filter => <button key={filter} onClick={() => setFilter(filter)} className={(type === filter || (filter === 'Remote' && remote)) ? 'filter-choice checked' : 'filter-choice'}>{filter === 'Remote' ? 'Remote only' : filter}<i/></button>)}</div><div className="filter-group"><span>Experience</span><button onClick={() => setNoExperienceOnly(value => !value)} className={noExperienceOnly ? 'filter-choice checked' : 'filter-choice'}>No experience needed<i/></button><button className="filter-choice">0-2 years<i/></button></div></aside><div className="search-results"><div className="results-title"><div><h2>{displayed.length} opportunities found</h2><p>{noExperienceOnly ? 'Showing roles that welcome applicants with no prior experience.' : source === 'adzuna' ? 'Live results powered by Adzuna.' : source === 'fallback' ? feedMessage : 'Matches based on your profile and search.'}</p></div><button className="sort-button">Most relevant</button></div>{error && <div className="search-error">{error}</div>}<div className="jobs-list">{displayed.length ? displayed.map(job => <JobCard key={job.id} job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>) : <div className="empty">No live opportunities match this search. Try a broader job title or location.</div>}</div></div></div></section>;
 }
 
 function NoExpNeeded({ saved, applications, onSave, onApply, jobList = jobs }) {
@@ -341,6 +343,8 @@ function NoExpNeeded({ saved, applications, onSave, onApply, jobList = jobs }) {
   );
 }
 
+// Legacy sample data is retained for design reference only; Browse Employers uses live listings.
+// eslint-disable-next-line no-unused-vars
 const MOCK_COMPANIES = [
   { name: 'Notion', logo: 'N', color: '#fff2e9', text: '#ff7752', industry: 'Productivity & Tech', location: 'San Francisco, US (Remote)', tagline: 'The all-in-one workspace for notes, docs, and tasks.' },
   { name: 'Monzo', logo: 'M', color: '#f1edff', text: '#7662d7', industry: 'Fintech & Banking', location: 'London, UK', tagline: 'A digital bank built for the way we live today.' },
@@ -372,58 +376,19 @@ function BrowseEmployers({ setActive, jobList, notify, setJobSearchQuery }) {
   const [notifiedCompanies, setNotifiedCompanies] = useState([]);
 
   const employers = useMemo(() => {
-    const activeJobsByCompany = {};
+    const activeJobsByCompany = new Map();
     jobList.forEach(job => {
-      const name = job.company;
-      if (!activeJobsByCompany[name]) {
-        activeJobsByCompany[name] = [];
-      }
-      activeJobsByCompany[name].push(job);
+      const name = job.company?.trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      const existing = activeJobsByCompany.get(key) || { name, jobs: [] };
+      existing.jobs.push(job);
+      activeJobsByCompany.set(key, existing);
     });
-
-    const mockCompaniesMap = new Map(MOCK_COMPANIES.map(c => [c.name.toLowerCase(), c]));
-
-    const list = MOCK_COMPANIES.map(comp => {
-      const activeJobs = activeJobsByCompany[comp.name] || [];
-      if (activeJobs.length > 0) {
-        return {
-          ...comp,
-          status: 'employing',
-          activeJobsCount: activeJobs.length,
-          logo: activeJobs[0].logo || comp.logo,
-          color: activeJobs[0].color || comp.color,
-          text: activeJobs[0].text || comp.text,
-        };
-      }
-      return {
-        ...comp,
-        status: comp.status || 'not-employing',
-        activeJobsCount: 0,
-      };
-    });
-
-    jobList.forEach(job => {
-      const name = job.company;
-      if (!mockCompaniesMap.has(name.toLowerCase())) {
-        const activeJobs = activeJobsByCompany[name] || [];
-        const newComp = {
-          name,
-          logo: job.logo || name.slice(0, 1).toUpperCase(),
-          color: job.color || '#edf4e8',
-          text: job.text || '#31543f',
-          industry: 'General Hiring',
-          location: job.place || 'Remote',
-          tagline: `Growing team at ${name}.`,
-          status: 'employing',
-          activeJobsCount: activeJobs.length,
-        };
-        list.push(newComp);
-        mockCompaniesMap.set(name.toLowerCase(), newComp);
-      }
-    });
-
-    // Sort alphabetically
-    return list.sort((a, b) => a.name.localeCompare(b.name));
+    return [...activeJobsByCompany.values()].map(({ name, jobs: companyJobs }) => {
+      const first = companyJobs[0];
+      return { name, logo: first.logo || name.slice(0, 1).toUpperCase(), color: first.color || '#edf4e8', text: first.text || '#31543f', industry: 'Hiring organisation', location: first.place || 'Remote', tagline: `${companyJobs.length} live ${companyJobs.length === 1 ? 'opportunity' : 'opportunities'} on Workly.`, status: 'employing', activeJobsCount: companyJobs.length };
+    }).sort((a, b) => a.name.localeCompare(b.name));
   }, [jobList]);
 
   const displayed = useMemo(() => {
@@ -1661,6 +1626,9 @@ function App() {
       setAccountType(role);
       setSignedIn(true);
       setActive(role === 'employer' ? 'Employer dashboard' : 'Discover');
+      if (role === 'employer') {
+        try { setEmployerJobs(await loadEmployerJobs(session.user.id)); } catch (error) { console.error('Could not load employer jobs:', error.message); }
+      }
     };
     loadSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -1670,14 +1638,12 @@ function App() {
   }, []);
 
   // â”€â”€ 24/7 live job feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const { jobs: liveJobs, source: feedSource, feedMessage, loading: feedLoading, lastRefreshed, refresh: refreshFeed } = useJobFeed({
-    location: 'Zimbabwe, Remote',
-  });
+  const { jobs: liveJobs, source: feedSource, feedMessage, loading: feedLoading, lastRefreshed, refresh: refreshFeed } = useJobFeed();
 
-  // Merge employer-posted jobs with live feed; fall back to static sample when feed is empty
+  // Employer listings and provider results are the only jobs shown to candidates.
   const liveJobList = useMemo(() => [
     ...employerJobs,
-    ...(liveJobs.length > 0 ? liveJobs : jobs),
+    ...liveJobs,
   ], [employerJobs, liveJobs]);
 
   const nav = ['Browse Employers', 'Find jobs', 'Early Career Programmes', 'My applications', 'ATS Checkers'];
@@ -1685,10 +1651,22 @@ function App() {
   const save = id => { setSaved(current => current.includes(id) ? current.filter(savedId => savedId !== id) : [...current, id]); notify(saved.includes(id) ? 'Job removed from saved roles' : 'Job saved to your list'); };
   const apply = job => { if (applications.some(app => app.id === job.id)) return notify('You have already applied for this role'); setSelectedJob(job); };
   const submitApplication = (job) => { setApplications(current => [...current, { ...job, status: current.length === 1 ? 'Interview' : 'Reviewing' }]); setSelectedJob(null); setShowPrepPrompt(job); notify(`Application sent to ${job.company}`); };
-  const addEmployerJob = details => {
-    const categoryNote = ['Internship', 'Apprenticeship'].includes(details.type) ? 'Also visible in Early Career Programmes' : 'Visible in Find jobs';
-    setEmployerJobs(current => [{ ...details, id: `employer-${Date.now()}`, logo: details.company.slice(0, 1).toUpperCase(), color: '#e5f4dd', text: '#337044', time: 'Just now', salary: details.salary || 'Competitive', match: 'New opportunity', noExpNeeded: ['Internship', 'Apprenticeship', 'Entry level'].includes(details.type), categoryNote }, ...current]);
-    notify('Job published and categorised');
+  const addEmployerJob = async details => {
+    try {
+      if (!supabase) throw new Error('Supabase is not configured for employer postings.');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Please sign in with an employer account to publish a job.');
+      const job = await createEmployerJob(user.id, details);
+      setEmployerJobs(current => [job, ...current]);
+      notify(job.scheduled ? 'Job scheduled successfully' : 'Job published successfully');
+    } catch (error) { notify(error.message || 'Could not publish this job.'); }
+  };
+  const removeEmployerJob = async id => {
+    try {
+      await deleteEmployerJob(id);
+      setEmployerJobs(current => current.filter(job => job.id !== id));
+      notify('Listing removed');
+    } catch (error) { notify(error.message || 'Could not remove this listing.'); }
   };
 
   // Shared header element
@@ -1707,7 +1685,7 @@ function App() {
     </header>
   );
 
-  if (!signedIn) return <AuthPage onSignIn={details => { setProfile(current => ({ ...current, ...details })); setAccountType(details.accountType); setSignedIn(true); setActive(details.accountType === 'employer' ? 'Employer dashboard' : 'Discover'); }} />;
+  if (!signedIn) return <AuthPage onSignIn={async details => { setProfile(current => ({ ...current, ...details })); setAccountType(details.accountType); setSignedIn(true); setActive(details.accountType === 'employer' ? 'Employer dashboard' : 'Discover'); if (details.accountType === 'employer' && supabase) { const { data: { user } } = await supabase.auth.getUser(); if (user) { try { setEmployerJobs(await loadEmployerJobs(user.id)); } catch (error) { console.error('Could not load employer jobs:', error.message); } } } }} />;
 
   if (active === 'Employer dashboard') return (
     <div className="app-shell">
@@ -1718,7 +1696,7 @@ function App() {
           <button className="employer-button" onClick={async () => { await supabase?.auth.signOut(); setSignedIn(false); }}><Icon name="arrow" size={16}/>Log out</button>
         </div>
       </header>
-      <main><EmployerDashboard profile={profile} onSaveProfile={setProfile} employerJobs={employerJobs} onAddJob={addEmployerJob} onRemoveJob={id => { setEmployerJobs(current => current.filter(job => job.id !== id)); notify('Listing removed'); }} onBack={() => setActive('Discover')}/></main>
+      <main><EmployerDashboard profile={profile} onSaveProfile={setProfile} employerJobs={employerJobs} onAddJob={addEmployerJob} onRemoveJob={removeEmployerJob} onBack={() => setActive('Discover')}/></main>
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
     </div>
   );
