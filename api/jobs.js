@@ -1,4 +1,4 @@
-// Vercel serverless endpoint. The TheirStack key never reaches the browser.
+// Vercel serverless endpoint. Adzuna credentials never reach the browser.
 const fallback = [
   { id: 'demo-1', logo: 'N', color: '#fff2e9', text: '#ff7752', company: 'Notion', role: 'Junior Product Designer', type: 'Full-time', place: 'Remote', time: '2d ago', salary: '$48-60k', tags: ['Figma', 'UI Design'], match: '94% match' },
   { id: 'demo-2', logo: 'M', color: '#f1edff', text: '#7662d7', company: 'Monzo', role: 'Graduate Data Analyst', type: 'Graduate', place: 'London, UK', time: '1d ago', salary: 'GBP 32-38k', tags: ['SQL', 'Python'], match: '89% match' },
@@ -7,22 +7,40 @@ const fallback = [
   { id: 'demo-5', logo: 'D', color: '#fef3e7', text: '#c8762d', company: 'Deloitte', role: 'Business Analyst Apprentice', type: 'Apprenticeship', place: 'Harare, Zimbabwe', time: '1d ago', salary: 'Paid training', tags: ['Excel', 'Analysis'], match: '85% match' },
 ];
 
-const normalize = (job, index) => ({
-  id: job.id || job.job_id || `theirstack-${index}`,
-  logo: (job.company_name || job.company || 'W').slice(0, 1).toUpperCase(),
-  color: ['#eaf2ff', '#fff0df', '#e9f6ef', '#f1ecff'][index % 4],
-  text: ['#4b7fd3', '#d97838', '#16865d', '#8569c9'][index % 4],
-  company: job.company_name || job.company || job.company_object?.name || 'Hiring company',
-  role: job.job_title || job.title || job.position || 'Open position',
-  type: job.employment_type || 'Full-time',
-  place: job.location || job.job_location || 'Remote',
-  time: job.date_posted ? new Date(job.date_posted).toLocaleDateString() : 'Recently posted',
-  salary: job.salary_string || job.salary || 'Competitive',
-  tags: (job.technologies || job.skills || []).slice(0, 2).map(String),
+const palette = [
+  { color: '#eaf2ff', text: '#4b7fd3' },
+  { color: '#fff0df', text: '#d97838' },
+  { color: '#e9f6ef', text: '#16865d' },
+  { color: '#f1ecff', text: '#8569c9' },
+];
+
+const normalize = (job, index) => {
+  const style = palette[index % palette.length];
+  const company = job.company?.display_name || 'Hiring company';
+  const title = job.title || 'Open position';
+  const location = job.location?.display_name || 'Remote';
+  const hasSalary = Number.isFinite(job.salary_min) || Number.isFinite(job.salary_max);
+  const salary = hasSalary
+    ? [job.salary_min, job.salary_max].filter(Number.isFinite).map(value => Math.round(value).toLocaleString()).join(' – ')
+    : 'Competitive';
+
+  return {
+  id: job.id || `adzuna-${index}`,
+  logo: company.slice(0, 1).toUpperCase(),
+  color: style.color,
+  text: style.text,
+  company,
+  role: title,
+  type: job.contract_time === 'full_time' ? 'Full-time' : job.contract_time === 'part_time' ? 'Part-time' : job.contract_type ? job.contract_type.replace(/^./, char => char.toUpperCase()) : 'Not specified',
+  place: location,
+  time: job.created ? new Date(job.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently posted',
+  salary,
+  tags: job.category?.label ? [job.category.label] : [],
   match: 'New opportunity',
-  url: job.url || job.job_url || job.application_url,
-  noExpNeeded: /intern|apprentice|trainee|entry|junior|graduate|assistant/i.test(job.job_title || ''),
-});
+  url: job.redirect_url || null,
+  noExpNeeded: /intern|apprentice|trainee|entry|junior|graduate|assistant/i.test(title),
+};
+};
 
 export default async function handler(req, res) {
   const query = String(req.query.query || '').trim();
@@ -34,25 +52,25 @@ export default async function handler(req, res) {
     const jobs = fallback.filter(job => (!internshipOnly || job.type === 'Internship') && (!apprenticeshipOnly || job.type === 'Apprenticeship') && (!needle || `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(needle)));
     return res.status(200).json({ jobs, source: 'fallback', message });
   };
-  if (!process.env.THEIRSTACK_API_KEY) {
+  const appId = process.env.ADZUNA_APP_ID;
+  const appKey = process.env.ADZUNA_APP_KEY;
+  const country = (process.env.ADZUNA_COUNTRY || 'za').toLowerCase();
+  if (!appId || !appKey) {
     return fallbackResults('Live jobs are not configured yet. Showing the local opportunity feed.');
   }
   try {
-    const body = { page: 0, limit: 25, posted_at_max_age_days: 30, job_title_or: query ? [query] : undefined, job_location_pattern_or: location ? [location] : ['Zimbabwe', 'Remote'] };
-    if (internshipOnly) body.job_title_or = query ? [query, 'intern', 'internship'] : ['intern', 'internship'];
-    if (apprenticeshipOnly) body.job_title_or = query ? [query, 'apprentice', 'apprenticeship'] : ['apprentice', 'apprenticeship'];
-    const response = await fetch('https://api.theirstack.com/v1/jobs/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.THEIRSTACK_API_KEY}` },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(`TheirStack returned ${response.status}`);
+    const terms = [query, internshipOnly ? 'internship' : '', apprenticeshipOnly ? 'apprenticeship' : ''].filter(Boolean).join(' ');
+    const params = new URLSearchParams({ app_id: appId, app_key: appKey, results_per_page: '25', 'content-type': 'application/json' });
+    if (terms) params.set('what', terms);
+    if (location) params.set('where', location);
+    const response = await fetch(`https://api.adzuna.com/v1/api/jobs/${encodeURIComponent(country)}/search/1?${params.toString()}`, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(`Adzuna returned ${response.status}`);
     const payload = await response.json();
-    const records = payload.data || payload.jobs || [];
-    return res.status(200).json({ jobs: records.map(normalize), source: 'theirstack', refreshedAt: new Date().toISOString() });
+    const records = payload.results || [];
+    return res.status(200).json({ jobs: records.map(normalize), source: 'adzuna', refreshedAt: new Date().toISOString(), total: payload.count || records.length });
   } catch (error) {
-    const reason = error.message.includes('401')
-      ? 'The live job provider is not authorised. Showing the local opportunity feed.'
+    const reason = /401|403/.test(error.message)
+      ? 'The Adzuna credentials are invalid or not authorised. Showing the local opportunity feed.'
       : 'The live job provider is temporarily unavailable. Showing the local opportunity feed.';
     return fallbackResults(reason);
   }

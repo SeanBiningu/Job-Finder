@@ -1,10 +1,9 @@
-// Temporary debug endpoint — DELETE after fixing the env var issue
+// Temporary configuration check. Never expose credential contents.
 export default function handler(req, res) {
-  const key = process.env.THEIRSTACK_API_KEY;
   res.status(200).json({
-    hasKey: !!key,
-    keyLength: key ? key.length : 0,
-    keyPreview: key ? `${key.slice(0, 10)}...` : 'NOT SET',
+    hasAdzunaAppId: Boolean(process.env.ADZUNA_APP_ID),
+    hasAdzunaAppKey: Boolean(process.env.ADZUNA_APP_KEY),
+    country: process.env.ADZUNA_COUNTRY || 'za',
     nodeEnv: process.env.NODE_ENV,
   });
 }

@@ -11,7 +11,7 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // refresh every 5 minutes
  *
  * Returns:
  *   jobs         – current job array
- *   source       – 'theirstack' | 'fallback' | 'sample'
+ *   source       – 'adzuna' | 'fallback' | 'sample'
  *   feedMessage  – optional info message from the API
  *   loading      – true while a fetch is in flight
  *   error        – error string, or ''
