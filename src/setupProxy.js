@@ -31,7 +31,7 @@ module.exports = function setupProxy(app) {
     const fallback = message => {
       return res.status(200).json({ jobs: [], source: 'fallback', message });
     };
-    if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) return fallback('Adzuna is not configured. Showing the demo feed.');
+    if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) return fallback('Adzuna is not configured. Add the Adzuna environment variables, then restart the app.');
     try {
       const terms = [query, internshipOnly ? 'internship' : '', apprenticeshipOnly ? 'apprenticeship' : ''].filter(Boolean).join(' ');
       const params = new URLSearchParams({ app_id: ADZUNA_APP_ID, app_key: ADZUNA_APP_KEY, results_per_page: '25', 'content-type': 'application/json' });

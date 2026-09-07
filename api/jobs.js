@@ -55,7 +55,7 @@ export default async function handler(req, res) {
   const appKey = process.env.ADZUNA_APP_KEY;
   const country = (process.env.ADZUNA_COUNTRY || 'za').toLowerCase();
   if (!appId || !appKey) {
-    return fallbackResults('Live jobs are not configured yet. Showing the local opportunity feed.');
+    return fallbackResults('Live jobs are not configured yet. Add the Adzuna environment variables in Vercel, then redeploy.');
   }
   try {
     const terms = [query, internshipOnly ? 'internship' : '', apprenticeshipOnly ? 'apprenticeship' : ''].filter(Boolean).join(' ');
