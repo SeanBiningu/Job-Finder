@@ -207,8 +207,6 @@ function Discover({ setActive, notify }) {
   };
   const [interest, setInterest] = useState('Design & creative');
   const [completed, setCompleted] = useState([]);
-  const [sprintStarted, setSprintStarted] = useState(false);
-  const [customSkill, setCustomSkill] = useState('');
   const [projectOpen, setProjectOpen] = useState(false);
   const [projectTitle, setProjectTitle] = useState('');
   const [projectIdea, setProjectIdea] = useState('');
@@ -216,26 +214,30 @@ function Discover({ setActive, notify }) {
   const [sprintNote, setSprintNote] = useState('');
   const [roomOpen, setRoomOpen] = useState(false);
   const [roomGoal, setRoomGoal] = useState('Get feedback on an idea');
-  const [roomJoined, setRoomJoined] = useState(false);
+  const [, setRoomJoined] = useState(false);
   const [learningDashboardOpen, setLearningDashboardOpen] = useState(false);
   const [inRoom, setInRoom] = useState(false);
   const [designJourneyStarted, setDesignJourneyStarted] = useState(false);
   const field = fields[interest];
-  const choose = title => { setInterest(title); setCompleted([]); setSprintStarted(false); setDesignJourneyStarted(false); notify(`${title} learning space opened`); };
+  const choose = title => {
+    setInterest(title);
+    setCompleted([]);
+    setDesignJourneyStarted(false);
+    notify(`${title} learning space opened`);
+    window.setTimeout(() => document.getElementById('dj-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
   const toggleSkill = skill => { setCompleted(current => current.includes(skill) ? current.filter(item => item !== skill) : [...current, skill]); notify(completed.includes(skill) ? `${skill} removed from your path` : `${skill} added to your path`); };
-  const addCustomSkill = event => { event.preventDefault(); const skill = customSkill.trim(); if (!skill) return; if (!completed.includes(skill)) setCompleted(current => [...current, skill]); setCustomSkill(''); notify(`${skill} added to your path`); };
   
-  if (designJourneyStarted && interest === 'Design & creative') {
-    return <DesignJourney notify={notify} externalStarted={true} setExternalStarted={setDesignJourneyStarted} />;
+  if (designJourneyStarted) {
+    return <DesignJourney notify={notify} fieldName={interest} externalStarted={true} setExternalStarted={setDesignJourneyStarted} />;
   }
 
   return <>
     <section className="hero explore-hero"><div className="hero-copy"><span className="eyebrow"><Icon name="spark" size={14}/> Learn by following your curiosity</span><h1>Find the work you<br/><em>want to grow into.</em></h1><p>Explore a field at your own pace, try practical skills, and make small things you can be proud of.</p><button className="hero-cta" onClick={() => document.getElementById('field-explorer')?.scrollIntoView({ behavior: 'smooth' })}>Explore your interests <Icon name="arrow" size={18}/></button></div><div className="hero-art"><div className="sun"/><div className="abstract-card card-two"><span className="ring"/><b>Curiosity → skills</b></div><div className="profile-photo"><div className="photo-face">✦</div></div><div className="floating-badge"><span className="tick"><Icon name="check" size={16}/></span><div><b>Learning journey</b><small>One small step today</small></div></div></div></section>
     <section className="trust-row explore-trust"><div><b>10 min</b><small>to try a new skill</small></div><div><b>4 paths</b><small>made for exploring</small></div><div><b>100%</b><small>at your own pace</small></div><p>There is no right starting point—only the one that makes you want to keep going.</p></section>
     <section className="discover-hub" id="field-explorer"><div className="discover-heading"><div><span className="eyebrow muted">Your curiosity map</span><h2>What feels most like you?</h2><p>Pick a space to explore. You can change direction anytime.</p></div><span className="explore-note">Choose a field to open its studio ↓</span></div><div className="interest-grid">{Object.entries(fields).map(([title, item]) => <button key={title} onClick={() => choose(title)} className={`interest-card ${item.tone} ${interest === title ? 'selected' : ''}`}><span className="interest-symbol">{item.symbol}</span><div><b>{title}</b><small>{item.tagline}</small></div><span className="interest-arrow"><Icon name="arrow" size={15}/></span></button>)}</div>
-      {interest === 'Design & creative' ? <DesignJourney notify={notify} externalStarted={false} setExternalStarted={setDesignJourneyStarted} /> : <>
-      <section className="field-studio"><div className="studio-heading"><div><span className="eyebrow muted">Now exploring · {interest}</span><h3>{field.intro}</h3></div><div className="studio-progress"><b>{completed.length}<small>/3</small></b><span>skills on your path</span><i><em style={{ width: `${Math.min(completed.length, 3) * 33.33}%` }}/></i></div></div><div className="studio-grid"><article className="studio-card skills-card"><span className="studio-kicker">Build your toolkit</span><h4>Pick skills to practise</h4><p>Start with a suggestion—or add a skill that matters to you.</p><div className="skill-choices">{field.skills.map(skill => <button key={skill} onClick={() => toggleSkill(skill)} className={completed.includes(skill) ? 'chosen' : ''}>{completed.includes(skill) ? <Icon name="check" size={13}/> : <span>+</span>}{skill}</button>)}</div><form className="custom-skill-form" onSubmit={addCustomSkill}><input value={customSkill} onChange={e => setCustomSkill(e.target.value)} placeholder="e.g. Photography, Excel, public speaking" aria-label="A skill you want to practise"/><button type="submit">Add mine</button></form></article><article className="studio-card sprint-card"><span className="studio-kicker">Try it today · 10 min</span><h4>{field.sprint}</h4><p>A low-pressure prompt to help you see whether this field clicks.</p><button onClick={() => { setSprintStarted(true); setSprintOpen(true); notify('Your 10-minute sprint has started'); }} className={sprintStarted ? 'sprint-active' : ''}>{sprintStarted ? <><Icon name="check" size={14}/> Continue sprint</> : <>Start the mini sprint <Icon name="arrow" size={15}/></>}</button></article><article className="studio-card project-card"><span className="studio-kicker">Make something real</span><div className="project-orbit"><span>01</span><span>02</span><span>03</span></div><h4>{field.project}</h4><p>Open a project now and shape it around the skills you want to practise.</p><button onClick={() => setProjectOpen(true)}>Open project <Icon name="arrow" size={15}/></button></article></div></section>
-      <div className="discovery-lower"><article className="path-card"><div className="path-copy"><span className="eyebrow">Your next gentle step</span><h3>Progress is built<br/><em>by trying things.</em></h3><p>Collect small proof of what you enjoy and what you are getting better at.</p><button onClick={() => document.getElementById('field-explorer')?.scrollIntoView({ behavior: 'smooth' })}>Keep exploring <Icon name="arrow" size={16}/></button></div><div className="path-steps">{['Choose a field','Pick two skills','Make a mini project'].map((step,index) => <div className={index < (completed.length >= 2 ? 3 : completed.length + 1) ? 'path-step done' : 'path-step'} key={step}><span>{index < (completed.length >= 2 ? 3 : completed.length + 1) ? <Icon name="check" size={13}/> : index + 1}</span><div><b>{step}</b><small>{index === 0 ? 'You are here' : index <= completed.length ? 'In progress' : 'Coming up'}</small></div></div>)}</div></article><article className="event-card learning-card"><span className="eyebrow muted">Learning room</span><h3>Meet people who are learning too</h3><p>Join a relaxed weekly session selected around your {interest.toLowerCase()} path.</p><div className="event-bottom"><small>{roomJoined ? (inRoom ? 'You are in the room' : 'Your place is saved') : 'Thursday · 5:30 PM'}</small><button onClick={() => roomJoined ? setLearningDashboardOpen(true) : setRoomOpen(true)}>{roomJoined ? <><Icon name="check" size={13}/> Learning dashboard</> : 'Join the room'}</button></div></article></div></>}</section>
+      <DesignJourney notify={notify} fieldName={interest} externalStarted={false} setExternalStarted={setDesignJourneyStarted} />
+      </section>
     {projectOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Project workspace"><section className="project-workspace"><button className="workspace-close" onClick={() => setProjectOpen(false)} aria-label="Close project workspace">×</button><span className="eyebrow muted">Your project workspace · {interest}</span><h2>{projectTitle || field.project}</h2><p>Make this project yours. Use your own idea and the skills you want to develop.</p><label>Project name<input value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder={field.project}/></label><label>What do you want to make?<textarea value={projectIdea} onChange={e => setProjectIdea(e.target.value)} placeholder="Describe your idea, who it is for, and what you want it to do..."/></label><div className="workspace-skills"><b>Skills you will practise</b>{completed.length ? <div>{completed.map(skill => <button key={skill} onClick={() => toggleSkill(skill)}>{skill} ×</button>)}</div> : <small>Add your own skill above or choose a suggestion to personalise this project.</small>}</div><div className="workspace-footer"><small>{projectIdea.trim() ? 'Your project draft is ready to keep building.' : 'Start with a rough idea—there is no perfect first draft.'}</small><button onClick={async () => { try { await saveLearningProject({ title: projectTitle.trim() || field.project, idea: projectIdea.trim(), field: interest, skills: completed }); setProjectOpen(false); notify('Your project has been saved to your learning path'); } catch (error) { notify(error.message || 'Could not save your project'); } }}>Save project <Icon name="check" size={15}/></button></div></section></div>}
     {sprintOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Mini sprint"><section className="project-workspace sprint-workspace"><button className="workspace-close" onClick={() => setSprintOpen(false)} aria-label="Close mini sprint">×</button><span className="eyebrow muted">Your 10-minute mini sprint</span><h2>{field.sprint}</h2><p>There is no right answer. Follow the prompt, make a rough first attempt, and save one takeaway.</p><ol className="sprint-steps"><li><b>Notice</b><span>What problem, moment, or person could this improve?</span></li><li><b>Make</b><span>Sketch, write, map, or build one small first version.</span></li><li><b>Reflect</b><span>What would you try next with more time?</span></li></ol><label>My sprint note<textarea value={sprintNote} onChange={e => setSprintNote(e.target.value)} placeholder="Write a few words, paste a link, or capture your next step..."/></label><div className="workspace-footer"><small>{sprintNote.trim() ? 'Nice—your thinking is captured.' : 'Even one sentence is a useful start.'}</small><button onClick={async () => { try { await saveSprint({ field: interest, prompt: field.sprint, note: sprintNote.trim() }); setSprintOpen(false); notify('Your mini sprint has been saved'); } catch (error) { notify(error.message || 'Could not save your mini sprint'); } }}>Save sprint <Icon name="check" size={15}/></button></div></section></div>}
     {roomOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Join learning room"><section className="project-workspace room-workspace"><button className="workspace-close" onClick={() => setRoomOpen(false)} aria-label="Close learning room">×</button><span className="eyebrow muted">Your recommended learning room</span><h2>{interest} makers room</h2><p>We will introduce you to people exploring {interest.toLowerCase()} and working on similar skills.</p><div className="room-match"><b>Your room is shaped around</b><span>{completed.length ? completed.slice(0, 3).join(' · ') : `your interest in ${interest}`}</span></div><label>What would you like from the room?<select value={roomGoal} onChange={e => setRoomGoal(e.target.value)}><option>Get feedback on an idea</option><option>Practise a skill with others</option><option>Find inspiration for a project</option><option>Meet people exploring this field</option></select></label><div className="workspace-footer"><small>Thursday, 5:30 PM · You can leave anytime.</small><button onClick={async () => { try { await joinLearningRoom({ field: interest, goal: roomGoal, skills: completed }); setRoomJoined(true); setRoomOpen(false); setLearningDashboardOpen(true); notify(`You joined the ${interest} makers room to ${roomGoal.toLowerCase()}`); } catch (error) { notify(error.message || 'Could not join this room'); } }}>Confirm my place <Icon name="check" size={15}/></button></div></section></div>}
@@ -635,11 +637,27 @@ function DiscoverOverview({ setActive }) {
 }
 
 /* â”€â”€ CV Preview renderer (shared by Design tab) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+function CvExtraSections({ sections, variant }) {
+  if (!sections.length) return null;
+  const className = variant === 'modern' ? 'cvp-section' : variant === 'minimal' ? 'cvp-min-section' : 'cvp-classic-section';
+  const headingClass = variant === 'modern' ? 'cvp-section-title' : variant === 'classic' ? 'cvp-classic-heading' : '';
+  return sections.map(section => (
+    <div className={className} key={section.title}>
+      {variant === 'minimal' ? <b>{section.title}</b> : <div className={headingClass}>{section.title}</div>}
+      <ul>{section.items.map((item, index) => <li key={index}>{item}</li>)}</ul>
+    </div>
+  ));
+}
+
 function CvPreview({ data, template }) {
-  const { personalInfo, summary, experiences, educations, skills, achievements, targetRole } = data;
+  const { personalInfo, summary, experiences, educations, skills, achievements, targetRole, projects, certifications, languages, volunteerExperience, references, settings } = data;
   const name = personalInfo.name || 'Your Name';
   const skillList = skills ? skills.split(',').map(s => s.trim()).filter(Boolean) : [];
   const achieveList = achievements ? achievements.split('\n').map(s => s.trim()).filter(Boolean) : [];
+  const extraSections = [
+    ['Projects', projects], ['Certifications', certifications], ['Languages', languages],
+    ['Volunteer Experience', volunteerExperience], ['References', settings?.includeReferences ? references : ''],
+  ].map(([title, value]) => ({ title, items: value ? value.split('\n').map(item => item.trim()).filter(Boolean) : [] })).filter(section => section.items.length);
 
   if (template === 'modern') {
     return (
@@ -691,6 +709,7 @@ function CvPreview({ data, template }) {
             <ul className="cvp-achieve-list">{achieveList.map((a, i) => <li key={i}>{a}</li>)}</ul>
           </div>
         )}
+        <CvExtraSections sections={extraSections} variant="modern" />
       </div>
     );
   }
@@ -737,6 +756,7 @@ function CvPreview({ data, template }) {
             <ul>{achieveList.map((a, i) => <li key={i}>{a}</li>)}</ul>
           </div>
         )}
+        <CvExtraSections sections={extraSections} variant="minimal" />
       </div>
     );
   }
@@ -794,6 +814,7 @@ function CvPreview({ data, template }) {
           <ul>{achieveList.map((a, i) => <li key={i}>{a}</li>)}</ul>
         </div>
       )}
+      <CvExtraSections sections={extraSections} variant="classic" />
     </div>
   );
 }
@@ -818,6 +839,12 @@ function ATSCheckers({ profile, onApply, notify }) {
   const [educations, setEducations] = useState([EMPTY_EDU()]);
   const [skills, setSkills] = useState('');
   const [achievements, setAchievements] = useState('');
+  const [projects, setProjects] = useState('');
+  const [certifications, setCertifications] = useState('');
+  const [languages, setLanguages] = useState('');
+  const [volunteerExperience, setVolunteerExperience] = useState('');
+  const [references, setReferences] = useState('');
+  const [settings, setSettings] = useState({ title: 'My CV', includeReferences: true });
   const [targetRole, setTargetRole] = useState('');
 
   /* â”€â”€ Step 2: Design â”€â”€ */
@@ -852,7 +879,7 @@ function ATSCheckers({ profile, onApply, notify }) {
   const ALLOWED = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
   const MAX_MB = 5;
 
-  const cvData = { personalInfo, summary, experiences, educations, skills, achievements, targetRole };
+  const cvData = { personalInfo, summary, experiences, educations, skills, achievements, projects, certifications, languages, volunteerExperience, references, settings, targetRole };
 
   /* â”€â”€ Helpers â”€â”€ */
   const applyParsedResume = parsed => {
@@ -916,6 +943,8 @@ function ATSCheckers({ profile, onApply, notify }) {
 
   const handleATSDrop = e => { e.preventDefault(); setIsDragging(false); validateAndSetATS(e.dataTransfer.files?.[0]); };
 
+  const cvFileName = () => (settings.title.trim() || personalInfo.name || profile?.name || 'CV').replace(/\s+/g, '-');
+
   const buildCvText = () => {
     const skillList = skills.split(',').map(s => s.trim()).filter(Boolean);
     const expLines = experiences.filter(e => e.title || e.company).map(e =>
@@ -934,6 +963,11 @@ function ATSCheckers({ profile, onApply, notify }) {
       eduLines ? `\nEDUCATION\n${eduLines}` : '',
       skillList.length ? `\nKEY SKILLS\n${skillList.join(' Â· ')}` : '',
       achievements ? `\nACHIEVEMENTS\n${achievements}` : '',
+      projects ? `\nPROJECTS\n${projects}` : '',
+      certifications ? `\nCERTIFICATIONS\n${certifications}` : '',
+      languages ? `\nLANGUAGES\n${languages}` : '',
+      volunteerExperience ? `\nVOLUNTEER EXPERIENCE\n${volunteerExperience}` : '',
+      settings.includeReferences && references ? `\nREFERENCES\n${references}` : '',
     ].filter(Boolean).join('\n');
   };
 
@@ -948,7 +982,7 @@ function ATSCheckers({ profile, onApply, notify }) {
   /* â”€â”€ Send built CV text to ATS tab â”€â”€ */
   const sendBuiltCVToATS = () => {
     const text = buildCvText();
-    const file = new File([text], `${(personalInfo.name || profile?.name || 'CV').replace(/\s+/g, '-')}-CV.txt`, { type: 'text/plain' });
+    const file = new File([text], `${cvFileName()}.txt`, { type: 'text/plain' });
     setSharedFile(file);
     setAnalysed(false); setAtsReport(null); setResumeError('');
     if (targetRole) setAtsCheckRole(targetRole);
@@ -1011,7 +1045,7 @@ function ATSCheckers({ profile, onApply, notify }) {
 
   const recheckRefinedCV = async () => {
     const refinedText = buildCvText();
-    const refinedFile = new File([refinedText], `${(personalInfo.name || profile?.name || 'CV').replace(/\s+/g, '-')}-refined-CV.txt`, { type: 'text/plain' });
+    const refinedFile = new File([refinedText], `${cvFileName()}-refined.txt`, { type: 'text/plain' });
     setSharedFile(refinedFile);
     setAnalysed(false); setAtsReport(null); setResumeError('');
     if (targetRole) setAtsCheckRole(targetRole);
@@ -1021,15 +1055,23 @@ function ATSCheckers({ profile, onApply, notify }) {
     notify('Refined CV sent to ATS checker â€” click Run ATS check to see your updated score');
   };
 
-  const createCV = () => {
-    const text = buildCvText();
-    const file = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(file);
-    const link = document.createElement('a');
-    link.href = url; link.download = `${(personalInfo.name || profile?.name || 'CV').replace(/\s+/g, '-')}-CV.txt`; link.click();
-    URL.revokeObjectURL(url);
-    setSharedFile(new File([text], `${(personalInfo.name || profile?.name || 'CV').replace(/\s+/g, '-')}-CV.txt`, { type: 'text/plain' }));
-    notify('Your CV draft has been downloaded');
+  const downloadPDF = () => {
+    const preview = document.querySelector('.cvwiz-preview-scroll .cv-preview');
+    if (!preview) return notify('Open the Design step to prepare your PDF.');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return notify('Please allow pop-ups to download your PDF.');
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map(node => node.outerHTML).join('');
+    const title = settings.title.trim() || `${personalInfo.name || profile?.name || 'CV'} CV`;
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"/><base href="${window.location.origin}/"/><title>${title}</title>${styles}<style>
+      @page { size: A4; margin: 0; }
+      html, body { width: 210mm; margin: 0; padding: 0; background: #fff; }
+      .cv-preview { box-sizing: border-box; width: 210mm !important; max-width: none !important; min-height: 297mm; margin: 0 !important; padding: 14mm 16mm !important; box-shadow: none !important; font-size: 10pt !important; line-height: 1.5 !important; }
+      .cvp-section, .cvp-classic-section, .cvp-min-section, .cvp-entry, .cvp-classic-entry, .cvp-min-entry { break-inside: avoid; page-break-inside: avoid; }
+      .cv-export-footer { box-sizing: border-box; width: 210mm; padding: 0 16mm 8mm; color: #71808a; font: 8pt Arial, sans-serif; text-align: center; }
+      @media screen { body { background: #eef2f4; } .cv-preview { margin: 12px auto !important; } }
+    </style></head><body>${preview.outerHTML}<footer class="cv-export-footer">${title}</footer><script>window.onload = async () => { if (document.fonts) await document.fonts.ready; window.focus(); window.print(); };<\/script></body></html>`);
+    printWindow.document.close();
+    notify('Your print-ready CV is open. Choose “Save as PDF” to download it.');
   };
 
   const applyWithConsent = () => {
@@ -1209,6 +1251,37 @@ function ATSCheckers({ profile, onApply, notify }) {
               <div className="cvwiz-section-title"><Icon name="check" size={15}/> Achievements</div>
               <label>Quantified outcomes (one per line)<textarea value={achievements} onChange={e => setAchievements(e.target.value)} placeholder={"Increased sales by 22% through new outreach strategy\nManaged 6-person team to deliver project 2 weeks ahead of schedule"}/></label>
             </div>
+
+            <div className="cvwiz-section">
+              <div className="cvwiz-section-title"><Icon name="file" size={15}/> Projects</div>
+              <label>Projects (one per line)<textarea value={projects} onChange={e => setProjects(e.target.value)} placeholder={"Portfolio website — built with React\nResearch project — analysed survey data and presented findings"}/></label>
+            </div>
+
+            <div className="cvwiz-section">
+              <div className="cvwiz-section-title"><Icon name="check" size={15}/> Certifications</div>
+              <label>Certificates (one per line)<textarea value={certifications} onChange={e => setCertifications(e.target.value)} placeholder={"Google Data Analytics Certificate — 2025\nFirst Aid Certificate — 2024"}/></label>
+            </div>
+
+            <div className="cvwiz-section">
+              <div className="cvwiz-section-title"><Icon name="grid" size={15}/> Languages</div>
+              <label>Languages and proficiency (one per line)<textarea value={languages} onChange={e => setLanguages(e.target.value)} placeholder={"English — Fluent\nShona — Native\nFrench — Conversational"}/></label>
+            </div>
+
+            <div className="cvwiz-section">
+              <div className="cvwiz-section-title"><Icon name="briefcase" size={15}/> Volunteer Experience</div>
+              <label>Volunteer work (one per line)<textarea value={volunteerExperience} onChange={e => setVolunteerExperience(e.target.value)} placeholder={"Youth mentor, Community Centre — 2024\nEvent volunteer, Local Food Bank — 2023"}/></label>
+            </div>
+
+            <div className="cvwiz-section">
+              <div className="cvwiz-section-title"><Icon name="file" size={15}/> References</div>
+              <label>References (one per line)<textarea value={references} onChange={e => setReferences(e.target.value)} placeholder={"Jordan Smith — Manager, Acme Ltd — jordan@example.com\nAvailable on request"}/></label>
+            </div>
+
+            <div className="cvwiz-section">
+              <div className="cvwiz-section-title"><Icon name="grid" size={15}/> CV Settings</div>
+              <label>CV title<input value={settings.title} onChange={e => setSettings(current => ({ ...current, title: e.target.value }))} placeholder="e.g. Marketing CV — 2026"/></label>
+              <label className="consent-check"><input type="checkbox" checked={settings.includeReferences} onChange={e => setSettings(current => ({ ...current, includeReferences: e.target.checked }))}/> Include references in the CV and ATS text</label>
+            </div>
           </div>
 
           <div className="cvwiz-step-footer">
@@ -1252,7 +1325,7 @@ function ATSCheckers({ profile, onApply, notify }) {
               ))}
 
               <div style={{marginTop:'24px'}}>
-                <button className="cvwiz-primary-btn" style={{width:'100%'}} onClick={createCV}><Icon name="download" size={15}/> Download CV</button>
+                <button className="cvwiz-primary-btn" style={{width:'100%'}} onClick={downloadPDF}><Icon name="download" size={15}/> Download PDF</button>
                 <button className="cvwiz-secondary-btn" style={{width:'100%', marginTop:'8px'}} onClick={sendBuiltCVToATS}><Icon name="spark" size={14}/> Send to ATS checker</button>
               </div>
             </div>
@@ -1340,7 +1413,7 @@ function ATSCheckers({ profile, onApply, notify }) {
               <div className="cvwiz-refine-divider"/>
 
               <div className="cvwiz-refine-actions">
-                <button className="cvwiz-primary-btn" onClick={createCV}><Icon name="download" size={15}/> Download CV</button>
+                <button className="cvwiz-primary-btn" onClick={downloadPDF}><Icon name="download" size={15}/> Download PDF</button>
                 <button className="cvwiz-secondary-btn" onClick={sendBuiltCVToATS}><Icon name="spark" size={14}/> Send to ATS checker</button>
                 {(refiningFromATS || refinementInstructions.length > 0) && (
                   <button className="cvb-recheck-btn" onClick={recheckRefinedCV}>Re-check refined CV <Icon name="spark" size={13}/></button>
@@ -1748,7 +1821,9 @@ function App() {
 
 
 /* ── DesignJourney ──────────────────────────────────────────────────────── */
-function DesignJourney({ notify, externalStarted, setExternalStarted }) {
+function DesignJourney({ notify, fieldName = 'Design & creative', externalStarted, setExternalStarted }) {
+  const isDesignJourney = fieldName === 'Design & creative';
+  const journeyNoun = isDesignJourney ? 'design' : fieldName.toLowerCase();
   const [internalStarted, setInternalStarted] = useState(false);
   const started = externalStarted !== undefined ? externalStarted : internalStarted;
   const setStarted = externalStarted !== undefined ? setExternalStarted : setInternalStarted;
@@ -1812,7 +1887,7 @@ function DesignJourney({ notify, externalStarted, setExternalStarted }) {
 
   const goNext = () => {
     if (journeyStep < 8) { setJourneyStep(s => s + 1); notify(`Step ${journeyStep + 1}: ${STEPS[journeyStep]} unlocked`); }
-    else { notify('Your design journey is complete! 🎉'); }
+    else { notify(`Your ${journeyNoun} journey is complete! 🎉`); }
   };
 
   const updateJourneyStep = (index, field, value) => {
@@ -1842,7 +1917,7 @@ function DesignJourney({ notify, externalStarted, setExternalStarted }) {
     { key: 'create', icon: '✦', label: 'Create', desc: 'Build something completely new.' },
   ];
 
-  const PRACTICE_CARDS = [
+  const DESIGN_PRACTICE_CARDS = [
     { icon: '🔍', title: 'Identify a problem', desc: 'Spot something frustrating in everyday life and frame it as a design problem.', action: 'Spot a problem' },
     { icon: '👤', title: 'Create a persona', desc: 'Define who you are designing for by building a simple user profile.', action: 'Build a persona' },
     { icon: '🗺', title: 'Map a user journey', desc: 'Draw the steps someone takes to reach a goal — before your solution exists.', action: 'Map a journey' },
@@ -1853,21 +1928,55 @@ function DesignJourney({ notify, externalStarted, setExternalStarted }) {
     { icon: '🔁', title: 'Improve a design', desc: 'Take feedback and make your design better. Good design is never finished.', action: 'Start iterating' },
   ];
 
+  const PRACTICE_BY_FIELD = {
+    'Tech & data': [
+      { icon: '🧩', title: 'Break down a problem', desc: 'Turn a real-world problem into small, practical pieces you can solve.', action: 'Start problem-solving', step: 1 },
+      { icon: '👤', title: 'Understand your user', desc: 'Describe who will use your tool or data insight and what they need.', action: 'Define the user', step: 2 },
+      { icon: '📊', title: 'Map the data flow', desc: 'Sketch how information moves from a question to a useful answer.', action: 'Map the flow', step: 3 },
+      { icon: '💡', title: 'Plan a mini-tool', desc: 'Choose a simple technical solution and explain how it will help.', action: 'Plan the tool', step: 4 },
+      { icon: '💻', title: 'Build the experience', desc: 'Outline the key screens, steps, or outputs your user will use.', action: 'Build the flow', step: 5 },
+      { icon: '🧪', title: 'Prototype your idea', desc: 'Make a small first version that someone can try.', action: 'Make a prototype', step: 6 },
+      { icon: '🔎', title: 'Test your tool', desc: 'Give someone a task and record where the tool helps or gets in the way.', action: 'Run a test', step: 7 },
+      { icon: '🔁', title: 'Improve your solution', desc: 'Use what you learned to decide what to build next.', action: 'Improve it', step: 8 },
+    ],
+    'People & community': [
+      { icon: '🔍', title: 'Spot a community need', desc: 'Identify a real moment where people need more connection or support.', action: 'Find a need', step: 1 },
+      { icon: '👥', title: 'Get to know your people', desc: 'Describe the people you want to bring together and what matters to them.', action: 'Meet the community', step: 2 },
+      { icon: '🗺', title: 'Map the current experience', desc: 'Follow the steps people take today and notice where they feel excluded.', action: 'Map the experience', step: 3 },
+      { icon: '💬', title: 'Plan an activity', desc: 'Create an idea that helps people connect, contribute, or feel welcome.', action: 'Plan it', step: 4 },
+      { icon: '🤝', title: 'Design the welcome', desc: 'Outline what people see, do, and feel when they join in.', action: 'Design the welcome', step: 5 },
+      { icon: '📝', title: 'Make a first version', desc: 'Create a simple invitation, agenda, or activity plan to share.', action: 'Make it', step: 6 },
+      { icon: '🗣', title: 'Gather feedback', desc: 'Ask participants what felt useful, unclear, or missing.', action: 'Get feedback', step: 7 },
+      { icon: '🌱', title: 'Strengthen the community', desc: 'Choose one improvement that will make the next experience better.', action: 'Improve it', step: 8 },
+    ],
+    'Business & impact': [
+      { icon: '🎯', title: 'Define an opportunity', desc: 'Find a problem worth solving and describe why it matters.', action: 'Define the opportunity', step: 1 },
+      { icon: '👤', title: 'Know who it helps', desc: 'Identify the people, customers, or communities your idea serves.', action: 'Understand the audience', step: 2 },
+      { icon: '🗺', title: 'Map the current situation', desc: 'Trace what happens today and where the biggest opportunity sits.', action: 'Map it', step: 3 },
+      { icon: '🚀', title: 'Shape your idea', desc: 'Choose a practical approach and explain the value it creates.', action: 'Shape the idea', step: 4 },
+      { icon: '📈', title: 'Plan the launch', desc: 'Outline the steps people take from hearing about your idea to using it.', action: 'Plan the launch', step: 5 },
+      { icon: '📄', title: 'Create a first pitch', desc: 'Turn your plan into a simple one-page version you can share.', action: 'Create the pitch', step: 6 },
+      { icon: '🧪', title: 'Test your assumptions', desc: 'Ask someone to react to the idea and record their response.', action: 'Test it', step: 7 },
+      { icon: '🔁', title: 'Improve the impact', desc: 'Use feedback to decide what to refine before the next step.', action: 'Improve it', step: 8 },
+    ],
+  };
+  const PRACTICE_CARDS = PRACTICE_BY_FIELD[fieldName] || DESIGN_PRACTICE_CARDS.map((card, index) => ({ ...card, step: index + 1 }));
+
   if (!started) {
     return (
       <div className="dj-root">
         {/* Hero */}
         <section className="dj-hero">
           <div className="dj-hero-copy">
-            <span className="eyebrow dj-eyebrow">Design &amp; Creative</span>
-            <h2 className="dj-hero-h">Turn a problem into an experience.</h2>
-            <p className="dj-hero-p">Start with a real problem, understand the people behind it, explore solutions, and turn your idea into something people can actually use.</p>
+            <span className="eyebrow dj-eyebrow">{fieldName}</span>
+            <h2 className="dj-hero-h">Turn a problem into meaningful action.</h2>
+            <p className="dj-hero-p">Start with a real problem, understand the people behind it, explore solutions, and turn your idea into something people can use.</p>
             <div className="dj-hero-actions">
               <button className="dj-cta-primary" onClick={() => setStarted(true)}>
-                Start a design journey <Icon name="arrow" size={16}/>
+                Start your journey <Icon name="arrow" size={16}/>
               </button>
               <button className="dj-cta-ghost" onClick={() => document.getElementById('dj-lab')?.scrollIntoView({ behavior: 'smooth' })}>
-                Explore design challenges
+                Explore challenges
               </button>
             </div>
           </div>
@@ -1889,8 +1998,8 @@ function DesignJourney({ notify, externalStarted, setExternalStarted }) {
         <section className="dj-lab" id="dj-lab">
           <div className="dj-lab-header">
             <span className="eyebrow muted">Practice Lab</span>
-            <h3 className="dj-lab-title">Warm up with a design challenge</h3>
-            <p className="dj-lab-sub">Pick an activity to practise one part of the design process. No experience needed.</p>
+            <h3 className="dj-lab-title">Warm up with a challenge</h3>
+            <p className="dj-lab-sub">Pick an activity for your chosen field. No experience needed.</p>
           </div>
           <div className="dj-lab-grid">
             {PRACTICE_CARDS.map(card => (
@@ -1898,7 +2007,7 @@ function DesignJourney({ notify, externalStarted, setExternalStarted }) {
                 <span className="dj-lab-icon">{card.icon}</span>
                 <h4 className="dj-lab-card-title">{card.title}</h4>
                 <p className="dj-lab-card-desc">{card.desc}</p>
-                <button className="dj-lab-card-btn" onClick={() => { setStarted(true); notify(`${card.title} activity started`); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                <button className="dj-lab-card-btn" onClick={() => { setJourneyStep(card.step); setStarted(true); notify(`${card.title} activity started`); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                   {card.action} <Icon name="arrow" size={13}/>
                 </button>
               </article>
@@ -2278,8 +2387,8 @@ function DesignJourney({ notify, externalStarted, setExternalStarted }) {
       <section className="dj-lab dj-lab--journey" id="dj-lab">
         <div className="dj-lab-header">
           <span className="eyebrow muted">Practice Lab</span>
-          <h3 className="dj-lab-title">Focused design activities</h3>
-          <p className="dj-lab-sub">Practise individual parts of the design process in short, focused activities.</p>
+          <h3 className="dj-lab-title">Focused practice activities</h3>
+          <p className="dj-lab-sub">Practise individual parts of the process in short, focused activities.</p>
         </div>
         <div className="dj-lab-grid">
           {PRACTICE_CARDS.map(card => (
@@ -2287,7 +2396,7 @@ function DesignJourney({ notify, externalStarted, setExternalStarted }) {
               <span className="dj-lab-icon">{card.icon}</span>
               <h4 className="dj-lab-card-title">{card.title}</h4>
               <p className="dj-lab-card-desc">{card.desc}</p>
-              <button className="dj-lab-card-btn" onClick={() => notify(`${card.title} activity started`)}>
+              <button className="dj-lab-card-btn" onClick={() => { setJourneyStep(card.step); notify(`${card.title} activity opened`); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                 {card.action} <Icon name="arrow" size={13}/>
               </button>
             </article>
