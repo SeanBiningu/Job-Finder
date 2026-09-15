@@ -1069,7 +1069,7 @@ function ATSCheckers({ profile, onApply, notify }) {
       .cvp-section, .cvp-classic-section, .cvp-min-section, .cvp-entry, .cvp-classic-entry, .cvp-min-entry { break-inside: avoid; page-break-inside: avoid; }
       .cv-export-footer { box-sizing: border-box; width: 210mm; padding: 0 16mm 8mm; color: #71808a; font: 8pt Arial, sans-serif; text-align: center; }
       @media screen { body { background: #eef2f4; } .cv-preview { margin: 12px auto !important; } }
-    </style></head><body>${preview.outerHTML}<footer class="cv-export-footer">${title}</footer><script>window.onload = async () => { if (document.fonts) await document.fonts.ready; window.focus(); window.print(); };<\/script></body></html>`);
+    </style></head><body>${preview.outerHTML}<footer class="cv-export-footer">${title}</footer><script>window.onload = async () => { if (document.fonts) await document.fonts.ready; window.focus(); window.print(); };</script></body></html>`);
     printWindow.document.close();
     notify('Your print-ready CV is open. Choose “Save as PDF” to download it.');
   };
