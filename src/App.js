@@ -7,6 +7,8 @@ import { searchJobs } from './services/jobSearch';
 import { useJobFeed } from './services/useJobFeed';
 import { supabase } from './services/supabase';
 import { createEmployerJob, deleteEmployerJob, loadEmployerJobs } from './services/employerJobs';
+import { createEmployerInterview, loadEmployerCandidates, loadEmployerInterviews, saveEmployerCandidateStatus } from './services/employerDashboard';
+// eslint-disable-next-line no-unused-vars
 import { joinLearningRoom, saveLearningProject, saveSprint } from './services/learningData';
 
 // PDF.js needs a dedicated worker to read uploaded PDF text in the browser.
@@ -199,50 +201,205 @@ function JobCard({ job, saved, applied, onSave, onApply }) {
 }
 
 function Discover({ setActive, notify }) {
-  const fields = {
-    'Design & creative': { symbol: '*', tone: 'lilac', tagline: 'Turn ideas into experiences', intro: 'Shape a thoughtful experience from a blank page.', skills: ['Visual thinking', 'User research', 'Figma basics'], sprint: 'Redesign one screen you use every day', project: 'Create a 3-screen mobile flow' },
-    'Tech & data': { symbol: '</>', tone: 'mint', tagline: 'Build what comes next', intro: 'Turn questions into things people can use.', skills: ['Problem solving', 'HTML & CSS', 'Data storytelling'], sprint: 'Make a tiny personal web page', project: 'Build a useful mini-tool' },
-    'People & community': { symbol: '+', tone: 'peach', tagline: 'Make work more human', intro: 'Bring people together around what matters.', skills: ['Active listening', 'Facilitation', 'Clear communication'], sprint: 'Plan a 20-minute community activity', project: 'Design a welcome experience' },
-    'Business & impact': { symbol: '↗', tone: 'sky', tagline: 'Help good ideas grow', intro: 'Turn an idea into meaningful progress.', skills: ['Creative strategy', 'Pitching ideas', 'Project planning'], sprint: 'Map an idea from problem to action', project: 'Create a one-page launch plan' },
-  };
-  const [interest, setInterest] = useState('Design & creative');
-  const [completed, setCompleted] = useState([]);
-  const [projectOpen, setProjectOpen] = useState(false);
-  const [projectTitle, setProjectTitle] = useState('');
-  const [projectIdea, setProjectIdea] = useState('');
-  const [sprintOpen, setSprintOpen] = useState(false);
-  const [sprintNote, setSprintNote] = useState('');
-  const [roomOpen, setRoomOpen] = useState(false);
-  const [roomGoal, setRoomGoal] = useState('Get feedback on an idea');
-  const [, setRoomJoined] = useState(false);
-  const [learningDashboardOpen, setLearningDashboardOpen] = useState(false);
-  const [inRoom, setInRoom] = useState(false);
-  const [designJourneyStarted, setDesignJourneyStarted] = useState(false);
-  const field = fields[interest];
-  const choose = title => {
-    setInterest(title);
-    setCompleted([]);
-    setDesignJourneyStarted(false);
-    notify(`${title} learning space opened`);
-    window.setTimeout(() => document.getElementById('dj-lab')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-  };
-  const toggleSkill = skill => { setCompleted(current => current.includes(skill) ? current.filter(item => item !== skill) : [...current, skill]); notify(completed.includes(skill) ? `${skill} removed from your path` : `${skill} added to your path`); };
-  
-  if (designJourneyStarted) {
-    return <DesignJourney notify={notify} fieldName={interest} externalStarted={true} setExternalStarted={setDesignJourneyStarted} />;
-  }
+  const earlyProgrammes = [
+    { duration: '6 weeks', title: 'Software & Web', desc: 'Build and ship a small project' },
+    { duration: '4 weeks', title: 'Design & Product', desc: 'Design a real screen flow' },
+    { duration: '5 weeks', title: 'Data & Analysis', desc: 'Turn messy data into insight' },
+    { duration: '4 weeks', title: 'Business & Ops', desc: 'Run a small project end to end' }
+  ];
 
-  return <>
-    <section className="hero explore-hero"><div className="hero-copy"><span className="eyebrow"><Icon name="spark" size={14}/> Learn by following your curiosity</span><h1>Find the work you<br/><em>want to grow into.</em></h1><p>Explore a field at your own pace, try practical skills, and make small things you can be proud of.</p><button className="hero-cta" onClick={() => document.getElementById('field-explorer')?.scrollIntoView({ behavior: 'smooth' })}>Explore your interests <Icon name="arrow" size={18}/></button></div><div className="hero-art"><div className="sun"/><div className="abstract-card card-two"><span className="ring"/><b>Curiosity → skills</b></div><div className="profile-photo"><div className="photo-face">✦</div></div><div className="floating-badge"><span className="tick"><Icon name="check" size={16}/></span><div><b>Learning journey</b><small>One small step today</small></div></div></div></section>
-    <section className="trust-row explore-trust"><div><b>10 min</b><small>to try a new skill</small></div><div><b>4 paths</b><small>made for exploring</small></div><div><b>100%</b><small>at your own pace</small></div><p>There is no right starting point—only the one that makes you want to keep going.</p></section>
-    <section className="discover-hub" id="field-explorer"><div className="discover-heading"><div><span className="eyebrow muted">Your curiosity map</span><h2>What feels most like you?</h2><p>Pick a space to explore. You can change direction anytime.</p></div><span className="explore-note">Choose a field to open its studio ↓</span></div><div className="interest-grid">{Object.entries(fields).map(([title, item]) => <button key={title} onClick={() => choose(title)} className={`interest-card ${item.tone} ${interest === title ? 'selected' : ''}`}><span className="interest-symbol">{item.symbol}</span><div><b>{title}</b><small>{item.tagline}</small></div><span className="interest-arrow"><Icon name="arrow" size={15}/></span></button>)}</div>
-      <DesignJourney notify={notify} fieldName={interest} externalStarted={false} setExternalStarted={setDesignJourneyStarted} />
+  return (
+    <div className="landing-container">
+      {/* Hero Section */}
+      <section className="landing-hero">
+        <div className="landing-hero-left">
+          <span className="landing-eyebrow">
+            <span className="eyebrow-dot"></span> Learn by following your curiosity
+          </span>
+          <h1 className="landing-title">
+            Find the work you <br />
+            want to <em>grow into.</em>
+          </h1>
+          <p className="landing-subtitle">
+            Explore a field at your own pace, try practical skills, and make small things you can be proud of — then turn that into a real application.
+          </p>
+          <button 
+            className="landing-cta-btn"
+            onClick={() => document.getElementById('how-workly-works')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            Explore your interests
+          </button>
+        </div>
+
+        <div className="landing-hero-right">
+          <div className="flow-diagram">
+            <svg className="flow-svg" viewBox="0 0 440 320" fill="none">
+              <path 
+                d="M 110 50 C 250 40, 250 140, 310 130 C 360 120, 160 205, 110 220 C 70 235, 230 275, 300 255" 
+                stroke="#548570" 
+                strokeWidth="2" 
+                strokeDasharray="4 4" 
+              />
+            </svg>
+
+            <div className="flow-card step-1">
+              <span className="step-tag">STEP 1</span>
+              <span className="step-title">Explore a field</span>
+            </div>
+
+            <div className="flow-card step-2">
+              <span className="step-tag">STEP 2</span>
+              <span className="step-title">Try a real task</span>
+            </div>
+
+            <div className="flow-card step-3">
+              <span className="step-tag">STEP 3</span>
+              <span className="step-title">Build something</span>
+            </div>
+
+            <div className="flow-card step-4">
+              <span className="step-tag step-tag--dark">STEP 4</span>
+              <span className="step-title step-title--dark">Apply with proof</span>
+            </div>
+
+            <div className="flow-badge">
+              <span className="badge-check-icon"><Icon name="check" size={13} /></span>
+              <div className="badge-text">
+                <b>Learning journey</b>
+                <small>One small step today</small>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
-    {projectOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Project workspace"><section className="project-workspace"><button className="workspace-close" onClick={() => setProjectOpen(false)} aria-label="Close project workspace">×</button><span className="eyebrow muted">Your project workspace · {interest}</span><h2>{projectTitle || field.project}</h2><p>Make this project yours. Use your own idea and the skills you want to develop.</p><label>Project name<input value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder={field.project}/></label><label>What do you want to make?<textarea value={projectIdea} onChange={e => setProjectIdea(e.target.value)} placeholder="Describe your idea, who it is for, and what you want it to do..."/></label><div className="workspace-skills"><b>Skills you will practise</b>{completed.length ? <div>{completed.map(skill => <button key={skill} onClick={() => toggleSkill(skill)}>{skill} ×</button>)}</div> : <small>Add your own skill above or choose a suggestion to personalise this project.</small>}</div><div className="workspace-footer"><small>{projectIdea.trim() ? 'Your project draft is ready to keep building.' : 'Start with a rough idea—there is no perfect first draft.'}</small><button onClick={async () => { try { await saveLearningProject({ title: projectTitle.trim() || field.project, idea: projectIdea.trim(), field: interest, skills: completed }); setProjectOpen(false); notify('Your project has been saved to your learning path'); } catch (error) { notify(error.message || 'Could not save your project'); } }}>Save project <Icon name="check" size={15}/></button></div></section></div>}
-    {sprintOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Mini sprint"><section className="project-workspace sprint-workspace"><button className="workspace-close" onClick={() => setSprintOpen(false)} aria-label="Close mini sprint">×</button><span className="eyebrow muted">Your 10-minute mini sprint</span><h2>{field.sprint}</h2><p>There is no right answer. Follow the prompt, make a rough first attempt, and save one takeaway.</p><ol className="sprint-steps"><li><b>Notice</b><span>What problem, moment, or person could this improve?</span></li><li><b>Make</b><span>Sketch, write, map, or build one small first version.</span></li><li><b>Reflect</b><span>What would you try next with more time?</span></li></ol><label>My sprint note<textarea value={sprintNote} onChange={e => setSprintNote(e.target.value)} placeholder="Write a few words, paste a link, or capture your next step..."/></label><div className="workspace-footer"><small>{sprintNote.trim() ? 'Nice—your thinking is captured.' : 'Even one sentence is a useful start.'}</small><button onClick={async () => { try { await saveSprint({ field: interest, prompt: field.sprint, note: sprintNote.trim() }); setSprintOpen(false); notify('Your mini sprint has been saved'); } catch (error) { notify(error.message || 'Could not save your mini sprint'); } }}>Save sprint <Icon name="check" size={15}/></button></div></section></div>}
-    {roomOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Join learning room"><section className="project-workspace room-workspace"><button className="workspace-close" onClick={() => setRoomOpen(false)} aria-label="Close learning room">×</button><span className="eyebrow muted">Your recommended learning room</span><h2>{interest} makers room</h2><p>We will introduce you to people exploring {interest.toLowerCase()} and working on similar skills.</p><div className="room-match"><b>Your room is shaped around</b><span>{completed.length ? completed.slice(0, 3).join(' · ') : `your interest in ${interest}`}</span></div><label>What would you like from the room?<select value={roomGoal} onChange={e => setRoomGoal(e.target.value)}><option>Get feedback on an idea</option><option>Practise a skill with others</option><option>Find inspiration for a project</option><option>Meet people exploring this field</option></select></label><div className="workspace-footer"><small>Thursday, 5:30 PM · You can leave anytime.</small><button onClick={async () => { try { await joinLearningRoom({ field: interest, goal: roomGoal, skills: completed }); setRoomJoined(true); setRoomOpen(false); setLearningDashboardOpen(true); notify(`You joined the ${interest} makers room to ${roomGoal.toLowerCase()}`); } catch (error) { notify(error.message || 'Could not join this room'); } }}>Confirm my place <Icon name="check" size={15}/></button></div></section></div>}
-    {learningDashboardOpen && <div className="project-workspace-backdrop" role="dialog" aria-modal="true" aria-label="Learning dashboard"><section className="project-workspace learning-dashboard"><button className="workspace-close" onClick={() => setLearningDashboardOpen(false)} aria-label="Close learning dashboard">×</button><span className="eyebrow muted">Your learning dashboard</span><h2>{interest} makers room</h2><div className="dashboard-status"><span className={inRoom ? 'status-live' : ''}>{inRoom ? '● Live now' : '○ Room opens Thursday · 5:30 PM'}</span><small>{inRoom ? 'You are connected with your learning room.' : 'Your place is confirmed.'}</small></div><div className="dashboard-grid"><article><span>Your focus</span><b>{roomGoal}</b></article><article><span>Your skills</span><b>{completed.length ? completed.slice(0, 3).join(' · ') : 'Choose skills to personalise your room'}</b></article><article><span>Next activity</span><b>{field.sprint}</b></article></div><div className="room-people"><b>Who you will meet</b><p>People exploring {interest.toLowerCase()} who are also looking to {roomGoal.toLowerCase()}.</p></div><div className="workspace-footer"><small>{inRoom ? 'You can return to your dashboard whenever you want.' : 'Enter when you are ready—there is no pressure to speak.'}</small><button className={inRoom ? 'leave-room-button' : ''} onClick={() => { setInRoom(current => !current); notify(inRoom ? 'You left the learning room' : 'You entered your learning room'); }}>{inRoom ? 'Leave room' : 'Enter room'} <Icon name={inRoom ? 'arrow' : 'check'} size={15}/></button></div></section></div>}
-  </>;
+
+      {/* Metrics / Trust Row */}
+      <section className="landing-trust-row">
+        <div className="trust-metrics">
+          <div className="metric-item">
+            <b>10 min</b>
+            <small>to try your first task</small>
+          </div>
+          <div className="metric-item">
+            <b>4 paths</b>
+            <small>to explore right now</small>
+          </div>
+          <div className="metric-item">
+            <b>100%</b>
+            <small>free to get started</small>
+          </div>
+        </div>
+        <div className="trust-quote">
+          <p>“There is no right starting point — only the one that makes you want to keep going.”</p>
+        </div>
+      </section>
+
+      {/* How Workly Works */}
+      <section className="landing-section" id="how-workly-works">
+        <div className="section-head">
+          <h2>How Workly works</h2>
+          <p>Most career platforms start with a CV. Workly starts with curiosity, and helps you build the CV along the way.</p>
+        </div>
+        <div className="steps-grid">
+          <div className="step-col">
+            <div className="col-divider"></div>
+            <span className="col-num">01</span>
+            <h3>Explore</h3>
+            <p>Browse fields by what you're curious about, not just job titles.</p>
+          </div>
+          <div className="step-col">
+            <div className="col-divider"></div>
+            <span className="col-num">02</span>
+            <h3>Practice</h3>
+            <p>Try short, real tasks from that field — no commitment required.</p>
+          </div>
+          <div className="step-col">
+            <div className="col-divider"></div>
+            <span className="col-num">03</span>
+            <h3>Build</h3>
+            <p>Turn what you tried into something small you can show.</p>
+          </div>
+          <div className="step-col">
+            <div className="col-divider"></div>
+            <span className="col-num">04</span>
+            <h3>Apply</h3>
+            <p>Use it in a real application, checked against what employers scan for.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Early Career Programmes */}
+      <section className="landing-section">
+        <div className="section-head">
+          <h2>Early career programmes</h2>
+          <p>Four starting points. Pick whichever pulls at your curiosity most.</p>
+        </div>
+        <div className="programmes-grid">
+          {earlyProgrammes.map((prog) => (
+            <div 
+              key={prog.title} 
+              className="programme-card"
+              onClick={() => setActive('Early Career Programmes')}
+            >
+              <span className="prog-duration">{prog.duration}</span>
+              <h3>{prog.title}</h3>
+              <p>{prog.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Feature Cards Section */}
+      <section className="landing-section">
+        <div className="features-grid">
+          <div className="feature-card">
+            <h3>Browse jobs and employers</h3>
+            <p>Search open roles from employers hiring right now, filtered to what you've actually been exploring.</p>
+            <button className="feature-link-btn" onClick={() => setActive('Find jobs')}>
+              Browse open roles
+            </button>
+          </div>
+          <div className="feature-card">
+            <h3>Check your CV against the ATS</h3>
+            <p>See how your CV reads to the screening software employers actually use, before you hit send.</p>
+            <button className="feature-link-btn" onClick={() => setActive('ATS Checkers')}>
+              Check your CV
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Hiring Banner Box */}
+      <section className="landing-section">
+        <div className="hiring-banner">
+          <div className="hiring-info">
+            <h2>Hiring early-career talent?</h2>
+            <p>See candidates by what they've actually built and practiced, not just what they've listed.</p>
+          </div>
+          <button className="hiring-cta-btn" onClick={() => setActive('Employer dashboard')}>
+            Open employer dashboard
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="landing-footer">
+        <div className="footer-left">
+          <span className="brand-mark">w</span>
+          <span className="footer-brand-name">workly</span>
+        </div>
+        <div className="footer-links">
+          <button onClick={() => setActive('Find jobs')}>Find jobs</button>
+          <button onClick={() => setActive('Early Career Programmes')}>Early career programmes</button>
+          <button onClick={() => setActive('ATS Checkers')}>ATS checker</button>
+          <button onClick={() => setActive('Employer dashboard')}>For employers</button>
+        </div>
+        <div className="footer-right">
+          <span>© 2025 Workly</span>
+        </div>
+      </footer>
+    </div>
+  );
 }
 
 function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved, applications, onSave, onApply, jobList = jobs, feedSource = 'sample', feedMessage: initialFeedMessage = '', initialQuery, onClearInitialQuery }) {
@@ -256,6 +413,7 @@ function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved,
   }, [initialQuery, onClearInitialQuery]);
   const [location, setLocation] = useState(''); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [noExperienceOnly, setNoExperienceOnly] = useState(false); const [liveJobs, setLiveJobs] = useState(jobList); const [searching, setSearching] = useState(false); const [source, setSource] = useState(feedSource); const [feedMessage, setFeedMessage] = useState(initialFeedMessage); const [error, setError] = useState('');
   useEffect(() => { setLiveJobs(jobList); setSource(feedSource); setFeedMessage(initialFeedMessage); }, [jobList, feedSource, initialFeedMessage]);
+  const searchPageRef = useRef(0);
   const displayed = useMemo(() => liveJobs.filter(job => (!categoryOnly || job.type === categoryOnly) && (!programmesOnly || ['Internship', 'Apprenticeship'].includes(job.type)) && (type === 'All' || job.type === type) && (!remote || job.place === 'Remote') && (!noExperienceOnly || job.noExpNeeded) && `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [categoryOnly, programmesOnly, type, remote, noExperienceOnly, query, liveJobs]);
   const filters = programmesOnly ? ['All', 'Internship', 'Apprenticeship', 'Remote'] : internshipOnly ? ['All', 'Remote', 'Marketing', 'Tech'] : apprenticeshipOnly ? ['All', 'Remote', 'Tech', 'Business'] : ['All', 'Full-time', 'Graduate', 'Entry level'];
   const hero = internshipOnly
@@ -266,7 +424,7 @@ function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved,
         ? { eyebrow: 'Learn, earn and grow', title: 'Early-career programmes that open doors.', copy: 'Explore internships and apprenticeships designed to help you build practical skills.', placeholder: 'Search internship, apprenticeship, skill or company' }
       : { eyebrow: 'Job search', title: 'Find your next opportunity.', copy: 'Search entry-level roles in Zimbabwe and around the world.', placeholder: 'Search job title, skill or company' };
   const setFilter = filter => { if (filter === 'Remote') setRemote(!remote); else { setType(filter); setRemote(false); } };
-  const runSearch = async () => { setSearching(true); setError(''); try { const result = await searchJobs({ query, location, internshipOnly, apprenticeshipOnly }); setLiveJobs(result.jobs); setSource(result.source); setFeedMessage(result.message || ''); } catch (err) { setError('We could not reach the job feed. Please try again.'); } finally { setSearching(false); } };
+  const runSearch = async () => { setSearching(true); setError(''); try { const page = (searchPageRef.current % 5) + 1; const result = await searchJobs({ query, location, internshipOnly, apprenticeshipOnly, page }); searchPageRef.current = page; setLiveJobs(result.jobs); setSource(result.source); setFeedMessage(result.message || ''); } catch (err) { setError('We could not reach the job feed. Please try again.'); } finally { setSearching(false); } };
   return <section className="browse-page"><div className="browse-hero"><span className="eyebrow">{hero.eyebrow}</span><h1>{hero.title}</h1><p>{hero.copy}</p><div className="browse-search"><Icon name="search"/><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder={hero.placeholder}/><Icon name="map"/><input className="location-search" value={location} onChange={e => setLocation(e.target.value)} placeholder="City, province, or Remote"/><button onClick={runSearch} disabled={searching}>{searching ? 'Searching...' : 'Search'}</button></div></div><div className="results-shell"><aside className="filter-panel"><b>Refine your search</b><div className="filter-group"><span>Role type</span>{filters.map(filter => <button key={filter} onClick={() => setFilter(filter)} className={(type === filter || (filter === 'Remote' && remote)) ? 'filter-choice checked' : 'filter-choice'}>{filter === 'Remote' ? 'Remote only' : filter}<i/></button>)}</div><div className="filter-group"><span>Experience</span><button onClick={() => setNoExperienceOnly(value => !value)} className={noExperienceOnly ? 'filter-choice checked' : 'filter-choice'}>No experience needed<i/></button><button className="filter-choice">0-2 years<i/></button></div></aside><div className="search-results"><div className="results-title"><div><h2>{displayed.length} opportunities found</h2><p>{noExperienceOnly ? 'Showing roles that welcome applicants with no prior experience.' : source === 'adzuna' ? 'Live results powered by Adzuna.' : source === 'fallback' ? feedMessage : 'Matches based on your profile and search.'}</p></div><button className="sort-button">Most relevant</button></div>{error && <div className="search-error">{error}</div>}<div className="jobs-list">{displayed.length ? displayed.map(job => <JobCard key={job.id} job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>) : <div className="empty">No live opportunities match this search. Try a broader job title or location.</div>}</div></div></div></section>;
 }
 
@@ -669,14 +827,74 @@ const SAMPLE_CANDIDATES = [
 function EmployerRecruitmentDashboardV2({ employerJobs, onAddJob, onRemoveJob, onBack, profile }) {
   const [page, setPage] = useState('Dashboard'); const [mobileOpen, setMobileOpen] = useState(false); const [candidates, setCandidates] = useState([]); const [selected, setSelected] = useState(null); const [notes, setNotes] = useState({}); const [jobDraft, setJobDraft] = useState({ title: '', company: profile.name || '', category: '', type: 'Full-time', location: '', minSalary: '', maxSalary: '', description: '', responsibilities: '', requirements: '', skills: '', experience: 'Entry level', deadline: '', positions: '1', screening: '' }); const [jobError, setJobError] = useState(''); const [preview, setPreview] = useState(false); const [interviews, setInterviews] = useState([]); const [interviewForm, setInterviewForm] = useState({ candidate: '', job: '', date: '', time: '', type: 'Video', place: '', notes: '' }); const [conversationId, setConversationId] = useState(''); const [message, setMessage] = useState(''); const [messages, setMessages] = useState({}); const [company, setCompany] = useState({ name: profile.name || '', industry: '', description: '', location: '', website: '', email: profile.email || '', phone: '', size: '1–10', linkedin: '', twitter: '', logo: '' }); const [notifications, setNotifications] = useState([]);
   const nav = [['Dashboard', '▦'], ['Jobs', '▣'], ['Applications', '◌'], ['Shortlisted', '★'], ['Candidates', '◎'], ['Interviews', '◷'], ['Messages', '✉'], ['Analytics', '◔'], ['Company Profile', '▤'], ['Team', '♙'], ['Notifications', '●'], ['Settings', '⚙']];
-  const updateCandidate = (id, status) => setCandidates(items => items.map(item => item.id === id ? { ...item, status } : item));
+  const updateCandidate = async (id, status) => {
+    const previous = candidates;
+    setCandidates(items => items.map(item => item.id === id ? { ...item, status } : item));
+    try { await saveEmployerCandidateStatus(id, status); }
+    catch (error) { setCandidates(previous); console.error('Could not save candidate status:', error.message); }
+  };
   const publish = async (event, draft = false) => { event.preventDefault(); const required = ['title', 'company', 'category', 'location', 'description', 'requirements', 'skills', 'deadline']; if (!draft && required.some(key => !String(jobDraft[key]).trim())) { setJobError('Complete all required fields before publishing.'); return; } setJobError(''); if (draft) { setPage('Jobs'); return; } await onAddJob({ role: jobDraft.title, company: jobDraft.company, place: jobDraft.location, type: jobDraft.type, description: `${jobDraft.description}\n\nResponsibilities: ${jobDraft.responsibilities}\n\nRequirements: ${jobDraft.requirements}`, salary: `${jobDraft.minSalary} - ${jobDraft.maxSalary}`, tags: jobDraft.skills.split(',').map(x => x.trim()).filter(Boolean), workStyle: jobDraft.location === 'Remote' ? 'Remote' : 'Hybrid', deadline: jobDraft.deadline, publishDate: '', applications: 'CV and short note' }); setPage('Jobs'); };
-  const schedule = event => { event.preventDefault(); if (!interviewForm.candidate || !interviewForm.job || !interviewForm.date || !interviewForm.time || !interviewForm.place) return; setInterviews(items => [{ ...interviewForm, id: Date.now(), status: 'Confirmed' }, ...items]); setInterviewForm({ candidate: '', job: '', date: '', time: '', type: 'Video', place: '', notes: '' }); };
+  const schedule = async event => {
+    event.preventDefault();
+    if (!interviewForm.candidate || !interviewForm.job || !interviewForm.date || !interviewForm.time || !interviewForm.place) return;
+    const candidate = candidates.find(item => item.name === interviewForm.candidate && item.job === interviewForm.job);
+    if (!candidate?.applicationId || !candidate.companyId) return;
+    try {
+      await createEmployerInterview({ ...interviewForm, applicationId: candidate.applicationId, companyId: candidate.companyId });
+      setInterviews(await loadEmployerInterviews());
+      setInterviewForm({ candidate: '', job: '', date: '', time: '', type: 'Video', place: '', notes: '' });
+    } catch (error) { console.error('Could not schedule interview:', error.message); }
+  };
   const activeConversation = candidates.find(c => c.id === conversationId) || { id: '', name: 'Candidate', job: 'No application selected', status: 'New' };
   const sendMessage = text => { const body = (text || message).trim(); if (!body) return; setMessages(current => ({ ...current, [conversationId]: [...(current[conversationId] || []), { id: Date.now(), from: 'employer', text: body, time: 'Now' }] })); setMessage(''); };
   const templates = { 'Application received': 'Thank you for applying. We have received your application and will be in touch after our review.', 'Interview invitation': 'We would like to invite you to interview for this opportunity. Please reply with your availability.', 'Follow-up': 'I’m following up on your application. Please let us know if you have any questions.', Rejection: 'Thank you for your time and interest. We have decided to move forward with other candidates at this stage.', 'Job offer': 'We’re delighted to offer you the role. Please reply and we will share the next steps.' };
   const appRows = page === 'Shortlisted' ? candidates.filter(x => x.status === 'Shortlisted') : candidates;
   const title = page === 'Shortlisted' ? 'Shortlisted candidates' : page;
+  useEffect(() => {
+    let active = true;
+    const loadCandidates = async () => {
+      if (!supabase) return;
+      try {
+        const [candidateData, interviewData] = await Promise.all([loadEmployerCandidates(), loadEmployerInterviews()]);
+        if (active) { setCandidates(candidateData); setInterviews(interviewData); }
+      } catch (error) {
+        console.error('Could not load employer applications:', error.message);
+      }
+    };
+    loadCandidates();
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    const account = document.querySelector('.er2-account');
+    const openCompanyProfile = () => { setPage('Company Profile'); setMobileOpen(false); };
+    account?.addEventListener('click', openCompanyProfile);
+    return () => account?.removeEventListener('click', openCompanyProfile);
+  }, []);
+  useEffect(() => {
+    if (page === 'Dashboard') return undefined;
+    const header = document.querySelector('.er2-top');
+    if (!header) return undefined;
+    const backButton = document.createElement('button');
+    backButton.className = 'er2-back';
+    backButton.type = 'button';
+    backButton.textContent = '← Back to dashboard';
+    const goBack = () => setPage('Dashboard');
+    backButton.addEventListener('click', goBack);
+    header.prepend(backButton);
+    return () => { backButton.removeEventListener('click', goBack); backButton.remove(); };
+  }, [page]);
+  useEffect(() => {
+    if (page !== 'Dashboard') return undefined;
+    const greeting = document.querySelector('.er2-heading p');
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      const timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+      if (greeting) greeting.textContent = `Good ${timeOfDay}, ${profile.name || 'there'} 👋`;
+    };
+    updateGreeting();
+    const timer = window.setInterval(updateGreeting, 60000);
+    return () => window.clearInterval(timer);
+  }, [page, profile.name]);
   return <div className="er2-shell"><aside className={mobileOpen ? 'er2-side open' : 'er2-side'}><button className="er2-brand" onClick={() => setPage('Dashboard')}><span>W</span> workly</button><small>EMPLOYER WORKSPACE</small><nav>{nav.map(([name, icon]) => <button key={name} className={page === name || (name === 'Jobs' && page === 'Post a Job') ? 'active' : ''} onClick={() => { setPage(name); setMobileOpen(false); }}><i>{icon}</i>{name}{name === 'Applications' && <em>{candidates.length}</em>}</button>)}</nav><div><button className="er2-candidate" onClick={onBack}>↗ Candidate view</button><div className="er2-account"><span>{(profile.name || 'CO').slice(0, 2).toUpperCase()}</span><div><b>{profile.name || 'Your company'}</b><small>Employer account</small></div></div></div></aside><main><header className="er2-top"><button className="er2-menu" onClick={() => setMobileOpen(!mobileOpen)}>☰</button><div><span>Employer workspace</span><b>{title}</b></div><button className="er2-post" onClick={() => setPage('Post a Job')}>+ Post a job</button></header>
     {page === 'Dashboard' && <section className="er2-content"><div className="er2-heading"><div><p>Good morning, {profile.name || 'there'} 👋</p><h1>Here’s what’s happening with your recruitment activity.</h1></div></div><div className="er2-stats">{[['Active jobs', employerJobs.length, 'Live opportunities', '▣', 'Jobs'], ['Total applications', candidates.length, 'New this week', '◌', 'Applications'], ['Shortlisted', candidates.filter(x => x.status === 'Shortlisted').length, 'Ready for review', '★', 'Shortlisted'], ['Upcoming interviews', interviews.length, 'Across your team', '◷', 'Interviews']].map(([label, value, note, icon, target]) => <button key={label} onClick={() => setPage(target)}><i>{icon}</i><small>{label}</small><b>{value}</b><span>{note} →</span></button>)}</div><div className="er2-grid"><section className="er2-card"><header><div><h2>Recent applications</h2><p>Candidates who need your attention</p></div><button onClick={() => setPage('Applications')}>View all →</button></header>{candidates.slice(0, 3).map(c => <article className="er2-mini" key={c.id}><span>{c.initials}</span><div><b>{c.name}</b><small>{c.title} · {c.job}</small></div><em className={`er2-status ${c.status.toLowerCase()}`}>{c.status}</em></article>)}</section><section className="er2-card"><header><div><h2>Active jobs</h2><p>Performance at a glance</p></div><button onClick={() => setPage('Jobs')}>Manage →</button></header>{employerJobs.slice(0, 3).map((job, i) => <article className="er2-mini" key={job.id}><span>{job.role?.[0]}</span><div><b>{job.role}</b><small>{job.place} · {job.type}</small></div><strong>{12 + i * 7} <small>apps</small></strong></article>)}{!employerJobs.length && <div className="er2-empty">Post a job to start building your team.<button onClick={() => setPage('Post a Job')}>Post a job</button></div>}</section></div></section>}
     {page === 'Jobs' && <section className="er2-content"><div className="er2-heading"><div><p>Job management</p><h1>All jobs</h1><span>Manage your open opportunities.</span></div><button className="er2-post" onClick={() => setPage('Post a Job')}>+ Post a job</button></div><div className="er2-card er2-table"><table><thead><tr><th>JOB</th><th>STATUS</th><th>APPLICATIONS</th><th>POSTED</th><th></th></tr></thead><tbody>{employerJobs.map((job, i) => <tr key={job.id}><td><b>{job.role}</b><small>{job.place} · {job.type}</small></td><td><em className="er2-status active">Active</em></td><td><button onClick={() => setPage('Applications')}>{12 + i * 7} applications</button></td><td>{job.time || 'Recently posted'}</td><td><button onClick={() => onRemoveJob(job.id)}>Archive</button></td></tr>)}</tbody></table>{!employerJobs.length && <div className="er2-empty">No jobs yet.<button onClick={() => setPage('Post a Job')}>Post your first job</button></div>}</div></section>}
@@ -1753,6 +1971,7 @@ function App() {
   const [accountType, setAccountType] = useState('candidate');
   const [employerJobs, setEmployerJobs] = useState([]);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showPrepPrompt, setShowPrepPrompt] = useState(null);
   const [profile, setProfile] = useState({ name: '', email: '', headline: 'Early-career professional', location: 'Harare, Zimbabwe' });
@@ -1815,18 +2034,24 @@ function App() {
 
   // Shared header element
   const topNav = (
-    <header className="topbar">
-      <button className="brand" onClick={() => setActive('Discover')}><span className="brand-mark">w</span><span>workly</span></button>
-      <nav>{nav.map(item => <button key={item} className={active === item ? 'nav-item active' : 'nav-item'} onClick={() => setActive(item)}>{item}</button>)}</nav>
-      <div className="top-actions">
-        <LiveBadge source={feedSource} lastRefreshed={lastRefreshed} loading={feedLoading} onRefresh={refreshFeed}/>
-        {accountType === 'employer' && <button className="employer-button" onClick={() => setActive('Employer dashboard')}><Icon name="briefcase" size={16}/>Employer dashboard</button>}
-        <div className="header-popover">
-          <button className="avatar" onClick={() => setAccountOpen(!accountOpen)}>{profile.name.split(' ').map(word => word[0]).join('').slice(0,2)}</button>
-          {accountOpen && <div className="account-menu"><div><b>{profile.name}</b><small>{profile.email}</small></div><button onClick={() => { setAccountOpen(false); setProfileOpen(true); }}>Profile settings</button><button className="logout" onClick={async () => { await supabase?.auth.signOut(); setSignedIn(false); setAccountOpen(false); }}>Log out</button></div>}
+    <>
+      <header className="topbar">
+        <button className="brand" onClick={() => setActive('Discover')}><span className="brand-mark">w</span><span>workly</span></button>
+        <nav>{nav.map(item => <button key={item} className={active === item ? 'nav-item active' : 'nav-item'} onClick={() => setActive(item)}>{item === 'Browse Employers' ? 'Browse employers' : item === 'Early Career Programmes' ? 'Early career programmes' : item === 'ATS Checkers' ? 'ATS checker' : item}</button>)}</nav>
+        <div className="top-actions">
+          <LiveBadge source={feedSource} lastRefreshed={lastRefreshed} loading={feedLoading} onRefresh={refreshFeed}/>
+          <button className="employer-button" onClick={() => setActive('Employer dashboard')}><Icon name="briefcase" size={16}/>Employer dashboard</button>
+          <div className="header-popover">
+            <button className="avatar" onClick={() => setAccountOpen(!accountOpen)}>{profile.name.split(' ').map(word => word[0]).join('').slice(0,2)}</button>
+            {accountOpen && <div className="account-menu"><div><b>{profile.name}</b><small>{profile.email}</small></div><button onClick={() => { setAccountOpen(false); setProfileOpen(true); }}>Profile settings</button><button className="logout" onClick={async () => { await supabase?.auth.signOut(); setSignedIn(false); setAccountOpen(false); }}>Log out</button></div>}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      {mobileMenuOpen && <div className="mobile-nav-sheet" role="dialog" aria-modal="true" aria-label="Explore Workly"><button className="mobile-nav-backdrop" aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)}/><section><header><div><span className="brand-mark">w</span><div><b>Explore Workly</b><small>Everything in one place</small></div></div></header><button className="mobile-nav-close" aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)}>×</button><div className="mobile-nav-links">{nav.map(item => <button key={item} className={active === item ? 'active' : ''} onClick={() => { setActive(item); setMobileMenuOpen(false); }}><span>{item === 'Browse Employers' ? '◎' : item === 'Early Career Programmes' ? '↗' : item === 'ATS Checkers' ? '✦' : item === 'Find jobs' ? '⌕' : '◌'}</span>{item}</button>)}<button onClick={() => { setActive('PrepDashboard'); setMobileMenuOpen(false); }}><span>◈</span>Interview preparation</button>{accountType === 'employer' && <button onClick={() => { setActive('Employer dashboard'); setMobileMenuOpen(false); }}><span>▣</span>Employer dashboard</button>}</div><footer><button onClick={() => { setMobileMenuOpen(false); setProfileOpen(true); }}><span className="mini-avatar">{profile.name.split(' ').map(word => word[0]).join('').slice(0,2) || 'ME'}</span><div><b>{profile.name || 'Your profile'}</b><small>Profile settings</small></div><i>›</i></button></footer></section></div>}
+      <nav className="mobile-tabbar" aria-label="Mobile navigation">
+        {[['Discover', 'Home'], ['Find jobs', 'Jobs'], ['My applications', 'Applied'], ['more', 'More']].map(([target, label]) => <button key={target} className={target === 'more' ? (mobileMenuOpen ? 'active' : '') : (active === target ? 'active' : '')} onClick={() => target === 'more' ? setMobileMenuOpen(true) : setActive(target)}><span>{target === 'Discover' ? '⌂' : target === 'Find jobs' ? '⌕' : target === 'My applications' ? '◌' : '☰'}</span>{label}</button>)}
+      </nav>
+    </>
   );
 
   if (!signedIn) return <AuthPage onSignIn={async details => { setProfile(current => ({ ...current, ...details })); setAccountType(details.accountType); setSignedIn(true); setActive(details.accountType === 'employer' ? 'Employer dashboard' : 'Discover'); if (details.accountType === 'employer' && supabase) { const { data: { user } } = await supabase.auth.getUser(); if (user) { try { setEmployerJobs(await loadEmployerJobs(user.id)); } catch (error) { console.error('Could not load employer jobs:', error.message); } } } }} />;
@@ -1892,6 +2117,7 @@ function App() {
 
 
 /* ── DesignJourney ──────────────────────────────────────────────────────── */
+// eslint-disable-next-line no-unused-vars
 function DesignJourney({ notify, fieldName = 'Design & creative', externalStarted, setExternalStarted }) {
   const isDesignJourney = fieldName === 'Design & creative';
   const journeyNoun = isDesignJourney ? 'design' : fieldName.toLowerCase();

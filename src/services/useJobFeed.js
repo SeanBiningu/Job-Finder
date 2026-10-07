@@ -28,6 +28,7 @@ export function useJobFeed({ query = '', location = '', internshipOnly = false, 
 
   // Keep a stable ref to the latest params so the interval never captures stale closures
   const paramsRef = useRef({ query, location, internshipOnly, apprenticeshipOnly });
+  const pageRef = useRef(0);
   useEffect(() => {
     paramsRef.current = { query, location, internshipOnly, apprenticeshipOnly };
   }, [query, location, internshipOnly, apprenticeshipOnly]);
@@ -37,7 +38,9 @@ export function useJobFeed({ query = '', location = '', internshipOnly = false, 
     setError('');
     try {
       const { query: q, location: l, internshipOnly: i, apprenticeshipOnly: a } = paramsRef.current;
-      const result = await searchJobs({ query: q, location: l, internshipOnly: i, apprenticeshipOnly: a });
+      const page = (pageRef.current % 5) + 1;
+      const result = await searchJobs({ query: q, location: l, internshipOnly: i, apprenticeshipOnly: a, page });
+      pageRef.current = page;
       setJobs(result.jobs || []);
       setSource(result.source || 'sample');
       setFeedMessage(result.message || '');

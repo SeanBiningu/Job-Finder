@@ -47,6 +47,7 @@ export default async function handler(req, res) {
   const location = String(req.query.location || '').trim();
   const internshipOnly = req.query.internship === 'true';
   const apprenticeshipOnly = req.query.apprenticeship === 'true';
+  const requestedPage = Math.max(1, Math.min(Number.parseInt(req.query.page, 10) || 1, 5));
   const fallbackResults = message => {
     const needle = `${query} ${location}`.toLowerCase();
     return res.status(200).json({ jobs: [], source: 'fallback', message });
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
     const params = new URLSearchParams({ app_id: appId, app_key: appKey, results_per_page: '25', 'content-type': 'application/json' });
     if (terms) params.set('what', terms);
     if (location) params.set('where', location);
-    const response = await fetch(`https://api.adzuna.com/v1/api/jobs/${encodeURIComponent(country)}/search/1?${params.toString()}`, { headers: { Accept: 'application/json' } });
+    const response = await fetch(`https://api.adzuna.com/v1/api/jobs/${encodeURIComponent(country)}/search/${requestedPage}?${params.toString()}`, { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error(`Adzuna returned ${response.status}`);
     const payload = await response.json();
     const records = payload.results || [];
