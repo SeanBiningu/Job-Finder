@@ -31,10 +31,10 @@ const toCard = (job, index = 0) => {
   return {
     id: job.id, logo: company.slice(0, 1).toUpperCase(), color: style.color, text: style.text,
     company, role: job.title, type: displayJobType(job.job_type), place: job.location,
-    time: job.created_at ? new Date(job.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently posted',
+    time: job.created_at ? new Date(job.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently posted', postedAt: job.created_at || '',
     salary: job.salary_min ? [job.salary_min, job.salary_max].filter(Boolean).map(value => value.toLocaleString()).join(' – ') : 'Competitive',
     tags: job.required_skills || [], match: 'Employer listing', noExpNeeded: /intern|apprentice|trainee|entry|junior|graduate|assistant/i.test(job.title),
-    workStyle: job.is_remote ? 'Remote' : 'On-site', scheduled: !job.is_published, deadline: job.closes_at?.slice(0, 10) || '',
+    workStyle: job.is_remote ? 'Remote' : 'On-site', scheduled: !job.is_published, deadline: job.closes_at?.slice(0, 10) || '', source: 'Workly employer',
   };
 };
 

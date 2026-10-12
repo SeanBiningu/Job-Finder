@@ -146,6 +146,10 @@ const Icon = ({ name, size = 20 }) => {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>, check: <path d="m5 12 4 4L19 6"/>, grid: <><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></>,
     bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></>, spark: <path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7L12 2Z"/>, download: <><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></>, upload: <><path d="M12 16V3"/><path d="m7 8 5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></>, file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12A2 2 0 0 0 20 20V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></>,
     refresh: <><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.36-2.64L3 21"/><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 3"/><path d="M21 3v6h-6"/><path d="M3 21v-6h6"/></>,
+    info: <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></>,
+    mail: <><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></>,
+    help: <><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></>,
+    shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 };
@@ -196,17 +200,65 @@ const jobs = [
   { id: 14, logo: 'R', color: '#fff0f5', text: '#c84a7a', company: 'Red Cross', role: 'Volunteer Coordinator Trainee', type: 'Volunteer', place: 'Harare, Zimbabwe', time: '4d ago', salary: 'Volunteer', tags: ['Organisation', 'People'], match: '88% match', noExpNeeded: true },
 ];
 
+const formatDeadline = value => {
+  if (!value) return '';
+  const deadline = new Date(`${value}T12:00:00`);
+  return Number.isNaN(deadline.getTime()) ? value : deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 function JobCard({ job, saved, applied, onSave, onApply }) {
-  return <article className="job-card"><div className="company-logo" style={{ background: job.color, color: job.text }}>{job.logo}</div><div className="job-info"><div className="job-top"><span>{job.company}</span><small>{job.time}</small></div><h3>{job.role}</h3><div className="meta"><span>{job.type}</span><i/><span>{job.place}</span><i/><span>{job.salary}</span></div><div className="tags">{job.tags.map(tag => <span key={tag}>{tag}</span>)}</div></div><div className="job-side"><span className="match"><Icon name="spark" size={13}/>{job.match}</span><div className="card-actions"><button className="apply-small" onClick={() => onApply(job)}>{applied ? 'Applied' : 'Apply'}</button><button aria-label="Save job" className={saved ? 'save saved' : 'save'} onClick={() => onSave(job.id)}><Icon name="bookmark" size={19}/></button></div></div></article>;
+  const hasApplicationLink = Boolean(job.url);
+  const applyFromListing = () => {
+    if (hasApplicationLink) {
+      window.open(job.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    onApply(job);
+  };
+
+  return <article className="job-card"><div className="company-logo" style={{ background: job.color, color: job.text }}>{job.logo}</div><div className="job-info"><div className="job-top"><span>{job.company}</span><small>{job.time}</small></div><h3>{job.role}</h3><div className="meta"><span>{job.type}</span><i/><span>{job.place}</span><i/><span>{job.salary}</span></div><div className="listing-trust"><span>Source: {job.source || 'Source not provided'}</span>{job.deadline && <span>Apply by {formatDeadline(job.deadline)}</span>}{job.verified === true && <span className="listing-verified"><Icon name="check" size={12}/>Verified listing</span>}</div><div className="tags">{job.tags.map(tag => <span key={tag}>{tag}</span>)}</div></div><div className="job-side"><span className="match"><Icon name="spark" size={13}/>{job.match}</span><div className="card-actions"><button className="apply-small" onClick={applyFromListing}>{applied ? 'Applied' : hasApplicationLink ? 'Open application' : 'Apply'}</button><button aria-label="Save job" className={saved ? 'save saved' : 'save'} onClick={() => onSave(job.id)}><Icon name="bookmark" size={19}/></button></div></div></article>;
 }
 
-function Discover({ setActive, notify }) {
+const isExpiredOpportunity = job => {
+  if (!job.deadline) return false;
+  const deadline = new Date(`${job.deadline}T23:59:59`);
+  return !Number.isNaN(deadline.getTime()) && deadline.getTime() < Date.now();
+};
+
+const matchesOpportunityType = (job, opportunityType) => {
+  if (!opportunityType) return true;
+  const searchable = `${job.role} ${job.type} ${(job.tags || []).join(' ')}`.toLowerCase();
+  const keywords = {
+    'Internships & attachments': ['intern', 'attachment', 'placement'],
+    Graduate: ['graduate', 'trainee'],
+    'Entry level': ['entry', 'junior', 'assistant'],
+    Apprenticeship: ['apprentice', 'learnership'],
+    'Scholarships & development': ['scholarship', 'career development', 'development programme', 'fellowship'],
+  };
+  return (keywords[opportunityType] || [opportunityType.toLowerCase()]).some(keyword => searchable.includes(keyword));
+};
+
+function Discover({ setActive, notify, onJobSearch, jobList = [], feedLoading = false, onPostJob, onOpenEmployerDashboard, onRegisterEmployer, onOpenInfoModal }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
+  const [opportunityType, setOpportunityType] = useState('');
   const earlyProgrammes = [
     { duration: '6 weeks', title: 'Software & Web', desc: 'Build and ship a small project' },
     { duration: '4 weeks', title: 'Design & Product', desc: 'Design a real screen flow' },
     { duration: '5 weeks', title: 'Data & Analysis', desc: 'Turn messy data into insight' },
     { duration: '4 weeks', title: 'Business & Ops', desc: 'Run a small project end to end' }
   ];
+  const opportunityCategories = [
+    { title: 'Internships & attachments', description: 'Build experience while you learn.', filter: 'Internships & attachments', icon: '↗' },
+    { title: 'Graduate trainee programmes', description: 'Structured starts for new graduates.', filter: 'Graduate', icon: '◎' },
+    { title: 'Entry-level jobs', description: 'Roles designed for your first steps.', filter: 'Entry level', icon: '⌁' },
+    { title: 'Apprenticeships', description: 'Earn practical skills on the job.', filter: 'Apprenticeship', icon: '⌘' },
+    { title: 'Scholarships & development', description: 'Funding and programmes for your growth.', filter: 'Scholarships & development', icon: '✦' },
+  ];
+  const recentOpportunities = useMemo(() => jobList
+    .filter(job => !job.scheduled && !isExpiredOpportunity(job))
+    .sort((first, second) => new Date(second.postedAt || 0) - new Date(first.postedAt || 0))
+    .slice(0, 3), [jobList]);
 
   return (
     <div className="landing-container">
@@ -221,14 +273,46 @@ function Discover({ setActive, notify }) {
             want to <em>grow into.</em>
           </h1>
           <p className="landing-subtitle">
-            Explore a field at your own pace, try practical skills, and make small things you can be proud of — then turn that into a real application.
+            Workly brings together jobs from named sources, early-career programmes, and practical career tools to help you build a stronger CV, apply with confidence, and track your progress.
           </p>
-          <button 
-            className="landing-cta-btn"
-            onClick={() => document.getElementById('how-workly-works')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            Explore your interests
-          </button>
+          <form className="landing-job-search" onSubmit={event => { event.preventDefault(); onJobSearch({ query: searchQuery, location: searchLocation, opportunityType }); }}>
+            <label className="landing-search-field landing-search-field--keyword">
+              <Icon name="search" size={19}/>
+              <input
+                value={searchQuery}
+                onChange={event => setSearchQuery(event.target.value)}
+                placeholder="Job title, skill, or keyword"
+                aria-label="Search job titles, skills, or keywords"
+              />
+            </label>
+            <label className="landing-search-field">
+              <Icon name="map" size={17}/>
+              <select value={searchLocation} onChange={event => setSearchLocation(event.target.value)} aria-label="Filter by location">
+                <option value="">All locations</option>
+                <option value="Harare">Harare</option>
+                <option value="Bulawayo">Bulawayo</option>
+                <option value="Remote">Remote</option>
+              </select>
+            </label>
+            <label className="landing-search-field">
+              <Icon name="briefcase" size={17}/>
+              <select value={opportunityType} onChange={event => setOpportunityType(event.target.value)} aria-label="Filter by opportunity type">
+                <option value="">All opportunity types</option>
+                <option value="Internship">Internships</option>
+                <option value="Attachment">Attachments</option>
+                <option value="Graduate">Graduate programmes</option>
+                <option value="Entry level">Entry-level jobs</option>
+              </select>
+            </label>
+            <button type="submit">Find opportunities</button>
+            <button
+              type="button"
+              className="landing-secondary-btn"
+              onClick={() => document.getElementById('how-workly-works')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              How it works
+            </button>
+          </form>
         </div>
 
         <div className="landing-hero-right">
@@ -273,24 +357,71 @@ function Discover({ setActive, notify }) {
         </div>
       </section>
 
+      <section className="landing-section landing-opportunities" aria-labelledby="recent-opportunities-title">
+        <div className="section-head landing-opportunities-head">
+          <div>
+            <span className="eyebrow muted">Live opportunities</span>
+            <h2 id="recent-opportunities-title">Recently posted opportunities</h2>
+            <p>Fresh roles from the platform. Expired opportunities are automatically removed.</p>
+          </div>
+          <button className="landing-view-all" onClick={() => setActive('Find jobs')}>View all opportunities <Icon name="arrow" size={15}/></button>
+        </div>
+        {recentOpportunities.length ? (
+          <div className="landing-opportunity-grid">
+            {recentOpportunities.map(job => (
+              <article className="landing-opportunity-card" key={job.id}>
+                <div className="landing-opportunity-main">
+                  <span className="landing-company-mark" style={{ background: job.color, color: job.text }}>{job.logo}</span>
+                  <div><h3>{job.role}</h3><p>{job.company}</p></div>
+                </div>
+                <div className="landing-opportunity-meta">
+                  <span>{job.place}</span><span>{job.type}</span><span>{job.deadline ? `Apply by ${job.deadline}` : `Posted ${job.time || 'recently'}`}</span><span>Source: {job.source || 'Source not provided'}</span>{job.verified === true && <span className="listing-verified">Verified listing</span>}
+                </div>
+                <div className="landing-opportunity-actions">
+                  <button onClick={() => onJobSearch({ query: job.role, location: job.place === 'Remote' ? '' : job.place })}>View Details <Icon name="arrow" size={14}/></button>
+                  {job.url ? <a href={job.url} target="_blank" rel="noreferrer">Apply on employer site <Icon name="arrow" size={14}/></a> : <small>Application: {job.applications || 'Submit your CV and a short note.'}</small>}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : <div className="landing-opportunity-empty">{feedLoading ? 'Loading the latest opportunities…' : 'No current opportunities are available. Check back soon or browse all roles.'}</div>}
+      </section>
+
+      <section className="landing-section opportunity-category-section" aria-labelledby="opportunity-category-title">
+        <div className="section-head">
+          <span className="eyebrow muted">Explore opportunities</span>
+          <h2 id="opportunity-category-title">Browse by opportunity type</h2>
+          <p>Choose the path that fits where you are now.</p>
+        </div>
+        <div className="opportunity-category-grid">
+          {opportunityCategories.map(category => (
+            <button className="opportunity-category-card" key={category.filter} onClick={() => onJobSearch({ opportunityType: category.filter })}>
+              <span className="opportunity-category-icon">{category.icon}</span>
+              <span><b>{category.title}</b><small>{category.description}</small></span>
+              <Icon name="arrow" size={16}/>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Metrics / Trust Row */}
       <section className="landing-trust-row">
         <div className="trust-metrics">
           <div className="metric-item">
-            <b>10 min</b>
-            <small>to try your first task</small>
+            <b>Clear sources</b>
+            <small>Every listing shows where it came from.</small>
           </div>
           <div className="metric-item">
-            <b>4 paths</b>
-            <small>to explore right now</small>
+            <b>Application links</b>
+            <small>When a provider supplies a link, we show it before you apply.</small>
           </div>
           <div className="metric-item">
-            <b>100%</b>
-            <small>free to get started</small>
+            <b>Current listings</b>
+            <small>Expired opportunities are not shown in the latest feed.</small>
           </div>
         </div>
         <div className="trust-quote">
-          <p>“There is no right starting point — only the one that makes you want to keep going.”</p>
+          <p><strong>Stay scam-aware:</strong> Legitimate employers will not ask you to pay a fee, share banking details, or move the application to an unverified channel.</p>
         </div>
       </section>
 
@@ -369,52 +500,166 @@ function Discover({ setActive, notify }) {
         </div>
       </section>
 
-      {/* Hiring Banner Box */}
-      <section className="landing-section">
-        <div className="hiring-banner">
-          <div className="hiring-info">
-            <h2>Hiring early-career talent?</h2>
-            <p>See candidates by what they've actually built and practiced, not just what they've listed.</p>
+      {/* Employer Section */}
+      <section className="landing-section employer-showcase-section" id="for-employers" aria-label="For employers">
+        <div className="employer-section-banner">
+          <div className="employer-section-header">
+            <div className="employer-section-title-wrap">
+              <span className="employer-eyebrow">
+                <Icon name="briefcase" size={14} /> Built for Employers & Hiring Teams
+              </span>
+              <h2>Job.Workly serves employers as well as job seekers.</h2>
+              <p className="employer-lead">
+                Great hiring starts by meeting candidates where they learn and grow. Workly bridges the gap between ambitious talent and hiring teams—giving employers direct, noise-free access to students, graduates, and early-career professionals ready to make an immediate impact.
+              </p>
+            </div>
+            <div className="employer-cta-group">
+              <button 
+                type="button" 
+                className="employer-primary-btn" 
+                onClick={onPostJob || (() => setActive('Employer dashboard'))}
+                title="Post an open role directly on Workly"
+              >
+                <Icon name="spark" size={15} /> Post a Job
+              </button>
+              <button 
+                type="button" 
+                className="employer-secondary-btn" 
+                onClick={onOpenEmployerDashboard || (() => setActive('Employer dashboard'))}
+              >
+                For Employers <Icon name="arrow" size={13} />
+              </button>
+            </div>
           </div>
-          <button className="hiring-cta-btn" onClick={() => setActive('Employer dashboard')}>
-            Open employer dashboard
-          </button>
+
+          {/* Candidate Connection Segments */}
+          <div className="employer-candidate-audiences">
+            <div className="candidate-audience-card">
+              <span className="audience-pill">Students</span>
+              <h3>Internships & Attachments</h3>
+              <p>Connect with university and college students seeking industrial attachments, vacation work, and practical project experience.</p>
+            </div>
+            <div className="candidate-audience-card">
+              <span className="audience-pill">Graduates</span>
+              <h3>Graduate Trainee Schemes</h3>
+              <p>Discover recent graduates ready for structured trainee programs, apprenticeships, and entry-level career tracks.</p>
+            </div>
+            <div className="candidate-audience-card">
+              <span className="audience-pill">Early-Career</span>
+              <h3>0–2 Years Professionals</h3>
+              <p>Hire ambitious junior talent with proven foundational skills, real portfolio artifacts, and high learning velocity.</p>
+            </div>
+          </div>
+
+          {/* Value Proposition Grid */}
+          <div className="employer-value-grid">
+            <div className="employer-value-item">
+              <span className="value-icon"><Icon name="check" size={14} /></span>
+              <div>
+                <strong>Skills-First Candidate Profiles</strong>
+                <span>Evaluate talent based on demonstrated skills, coursework, and practical projects—not just keyword-heavy CVs.</span>
+              </div>
+            </div>
+            <div className="employer-value-item">
+              <span className="value-icon"><Icon name="check" size={14} /></span>
+              <div>
+                <strong>Complete Recruitment Workflow</strong>
+                <span>Post vacancies, review applications, move candidates across pipeline stages, and coordinate interviews in one place.</span>
+              </div>
+            </div>
+            <div className="employer-value-item">
+              <span className="value-icon"><Icon name="check" size={14} /></span>
+              <div>
+                <strong>Noise-Free Candidate Matching</strong>
+                <span>Reach motivated early talent actively searching for your specific opportunity types, skills, and work styles.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Employer Links & Registration Bar */}
+          <div className="employer-footer-bar">
+            <div className="employer-links-prompt">
+              <span>Ready to hire top emerging talent?</span>
+              <button 
+                type="button" 
+                className="employer-text-link" 
+                onClick={onOpenEmployerDashboard || (() => setActive('Employer dashboard'))}
+              >
+                Go to Employer Dashboard →
+              </button>
+              <span className="employer-link-divider">•</span>
+              <button 
+                type="button" 
+                className="employer-text-link highlight" 
+                onClick={onRegisterEmployer || (() => setActive('Employer dashboard'))}
+              >
+                Employer registration & sign up →
+              </button>
+            </div>
+            <span className="employer-workflow-badge">
+              <Icon name="check" size={12} /> Employer workflow active & ready to post
+            </span>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="landing-footer">
-        <div className="footer-left">
-          <span className="brand-mark">w</span>
-          <span className="footer-brand-name">workly</span>
+      <footer className="workly-footer">
+        <div className="workly-footer-main">
+          <section className="workly-footer-intro">
+            <button className="workly-footer-brand" onClick={() => setActive('Discover')} aria-label="Go to Workly home"><span className="brand-mark">w</span><b>workly</b></button>
+            <p>Find work you want to grow into —<br/>one small, provable step at a time.</p>
+            <div className="workly-footer-journey"><span><Icon name="check" size={13}/></span><div><b>Learning journey</b><small>One small step today</small></div></div>
+          </section>
+          <section className="workly-footer-column">
+            <b>For candidates</b>
+            <button onClick={() => setActive('Find jobs')}>Browse jobs</button>
+            <button onClick={() => setActive('Early Career Programmes')}>Early career programmes</button>
+            <button onClick={() => setActive('ATS Checkers')}>ATS checker</button>
+            <button onClick={() => setActive('My applications')}>My applications</button>
+          </section>
+          <section className="workly-footer-column">
+            <b>For employers</b>
+            <button onClick={onOpenEmployerDashboard || (() => setActive('Employer dashboard'))}>Employer dashboard</button>
+            <button onClick={onPostJob || (() => setActive('Employer dashboard'))}>Post a role</button>
+            <button onClick={() => onOpenInfoModal ? onOpenInfoModal('faq') : notify('Opening FAQs')}>Employer FAQs</button>
+            <button onClick={() => setActive('Browse Employers')}>Browse candidates</button>
+          </section>
+          <section className="workly-footer-column">
+            <b>Company</b>
+            <button onClick={() => onOpenInfoModal ? onOpenInfoModal('about') : notify('Opening About')}>About Job.Workly</button>
+            <button onClick={() => onOpenInfoModal ? onOpenInfoModal('faq') : notify('Opening FAQs')}>Help & FAQs</button>
+            <button onClick={() => onOpenInfoModal ? onOpenInfoModal('contact') : notify('Opening Contact')}>Contact Us</button>
+          </section>
+          <section className="workly-footer-column">
+            <b>Legal</b>
+            <button onClick={() => onOpenInfoModal ? onOpenInfoModal('privacy') : notify('Opening Privacy Policy')}>Privacy policy</button>
+            <button onClick={() => onOpenInfoModal ? onOpenInfoModal('terms') : notify('Opening Terms')}>Terms of use</button>
+          </section>
         </div>
-        <div className="footer-links">
-          <button onClick={() => setActive('Find jobs')}>Find jobs</button>
-          <button onClick={() => setActive('Early Career Programmes')}>Early career programmes</button>
-          <button onClick={() => setActive('ATS Checkers')}>ATS checker</button>
-          <button onClick={() => setActive('Employer dashboard')}>For employers</button>
-        </div>
-        <div className="footer-right">
-          <span>© 2025 Workly</span>
+        <div className="workly-footer-bottom">
+          <small>© 2025 Job.Workly. Made in Zimbabwe.</small>
+          <div className="workly-footer-socials">
+            <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter" className="footer-social-link">𝕏</a>
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="footer-social-link">in</a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="footer-social-link">◎</a>
+            <a href="https://github.com/SeanBiningu/Job-Finder" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository" className="footer-social-link" title="Job-Finder GitHub repository">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            </a>
+          </div>
         </div>
       </footer>
     </div>
   );
 }
 
-function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved, applications, onSave, onApply, jobList = jobs, feedSource = 'sample', feedMessage: initialFeedMessage = '', initialQuery, onClearInitialQuery }) {
+function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved, applications, onSave, onApply, jobList = jobs, feedSource = 'sample', feedMessage: initialFeedMessage = '', initialSearch, onClearInitialSearch }) {
   const categoryOnly = internshipOnly ? 'Internship' : apprenticeshipOnly ? 'Apprenticeship' : null;
   const [query, setQuery] = useState('');
-  useEffect(() => {
-    if (initialQuery) {
-      setQuery(initialQuery);
-      if (onClearInitialQuery) onClearInitialQuery();
-    }
-  }, [initialQuery, onClearInitialQuery]);
-  const [location, setLocation] = useState(''); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [noExperienceOnly, setNoExperienceOnly] = useState(false); const [liveJobs, setLiveJobs] = useState(jobList); const [searching, setSearching] = useState(false); const [source, setSource] = useState(feedSource); const [feedMessage, setFeedMessage] = useState(initialFeedMessage); const [error, setError] = useState('');
+  const [location, setLocation] = useState(''); const [opportunityType, setOpportunityType] = useState(''); const [remote, setRemote] = useState(false); const [type, setType] = useState('All'); const [noExperienceOnly, setNoExperienceOnly] = useState(false); const [liveJobs, setLiveJobs] = useState(jobList); const [searching, setSearching] = useState(false); const [source, setSource] = useState(feedSource); const [feedMessage, setFeedMessage] = useState(initialFeedMessage); const [error, setError] = useState('');
   useEffect(() => { setLiveJobs(jobList); setSource(feedSource); setFeedMessage(initialFeedMessage); }, [jobList, feedSource, initialFeedMessage]);
   const searchPageRef = useRef(0);
-  const displayed = useMemo(() => liveJobs.filter(job => (!categoryOnly || job.type === categoryOnly) && (!programmesOnly || ['Internship', 'Apprenticeship'].includes(job.type)) && (type === 'All' || job.type === type) && (!remote || job.place === 'Remote') && (!noExperienceOnly || job.noExpNeeded) && `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [categoryOnly, programmesOnly, type, remote, noExperienceOnly, query, liveJobs]);
+  const displayed = useMemo(() => liveJobs.filter(job => (!categoryOnly || job.type === categoryOnly) && (!programmesOnly || ['Internship', 'Apprenticeship'].includes(job.type)) && (type === 'All' || job.type === type) && (!remote || job.place === 'Remote') && (!noExperienceOnly || job.noExpNeeded) && matchesOpportunityType(job, opportunityType) && `${job.role} ${job.company} ${job.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [categoryOnly, programmesOnly, type, remote, noExperienceOnly, opportunityType, query, liveJobs]);
   const filters = programmesOnly ? ['All', 'Internship', 'Apprenticeship', 'Remote'] : internshipOnly ? ['All', 'Remote', 'Marketing', 'Tech'] : apprenticeshipOnly ? ['All', 'Remote', 'Tech', 'Business'] : ['All', 'Full-time', 'Graduate', 'Entry level'];
   const hero = internshipOnly
     ? { eyebrow: 'Learn by doing', title: 'Internships that open doors.', copy: 'Paid placements and early experience with teams ready to help you grow.', placeholder: 'Search internship, skill or company' }
@@ -424,8 +669,18 @@ function BrowseJobs({ internshipOnly, apprenticeshipOnly, programmesOnly, saved,
         ? { eyebrow: 'Learn, earn and grow', title: 'Early-career programmes that open doors.', copy: 'Explore internships and apprenticeships designed to help you build practical skills.', placeholder: 'Search internship, apprenticeship, skill or company' }
       : { eyebrow: 'Job search', title: 'Find your next opportunity.', copy: 'Search entry-level roles in Zimbabwe and around the world.', placeholder: 'Search job title, skill or company' };
   const setFilter = filter => { if (filter === 'Remote') setRemote(!remote); else { setType(filter); setRemote(false); } };
-  const runSearch = async () => { setSearching(true); setError(''); try { const page = (searchPageRef.current % 5) + 1; const result = await searchJobs({ query, location, internshipOnly, apprenticeshipOnly, page }); searchPageRef.current = page; setLiveJobs(result.jobs); setSource(result.source); setFeedMessage(result.message || ''); } catch (err) { setError('We could not reach the job feed. Please try again.'); } finally { setSearching(false); } };
-  return <section className="browse-page"><div className="browse-hero"><span className="eyebrow">{hero.eyebrow}</span><h1>{hero.title}</h1><p>{hero.copy}</p><div className="browse-search"><Icon name="search"/><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder={hero.placeholder}/><Icon name="map"/><input className="location-search" value={location} onChange={e => setLocation(e.target.value)} placeholder="City, province, or Remote"/><button onClick={runSearch} disabled={searching}>{searching ? 'Searching...' : 'Search'}</button></div></div><div className="results-shell"><aside className="filter-panel"><b>Refine your search</b><div className="filter-group"><span>Role type</span>{filters.map(filter => <button key={filter} onClick={() => setFilter(filter)} className={(type === filter || (filter === 'Remote' && remote)) ? 'filter-choice checked' : 'filter-choice'}>{filter === 'Remote' ? 'Remote only' : filter}<i/></button>)}</div><div className="filter-group"><span>Experience</span><button onClick={() => setNoExperienceOnly(value => !value)} className={noExperienceOnly ? 'filter-choice checked' : 'filter-choice'}>No experience needed<i/></button><button className="filter-choice">0-2 years<i/></button></div></aside><div className="search-results"><div className="results-title"><div><h2>{displayed.length} opportunities found</h2><p>{noExperienceOnly ? 'Showing roles that welcome applicants with no prior experience.' : source === 'adzuna' ? 'Live results powered by Adzuna.' : source === 'fallback' ? feedMessage : 'Matches based on your profile and search.'}</p></div><button className="sort-button">Most relevant</button></div>{error && <div className="search-error">{error}</div>}<div className="jobs-list">{displayed.length ? displayed.map(job => <JobCard key={job.id} job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>) : <div className="empty">No live opportunities match this search. Try a broader job title or location.</div>}</div></div></div></section>;
+  const runSearch = async (search = {}) => { const nextQuery = search.query ?? query; const nextLocation = search.location ?? location; const nextOpportunityType = search.opportunityType ?? opportunityType; setSearching(true); setError(''); try { const page = (searchPageRef.current % 5) + 1; const result = await searchJobs({ query: nextQuery, location: nextLocation, opportunityType: nextOpportunityType, internshipOnly, apprenticeshipOnly, page }); searchPageRef.current = page; setLiveJobs(result.jobs); setSource(result.source); setFeedMessage(result.message || ''); } catch (err) { setError('We could not reach the live job feed. Please try again.'); } finally { setSearching(false); } };
+  useEffect(() => {
+    if (!initialSearch) return;
+    setQuery(initialSearch.query || '');
+    setLocation(initialSearch.location || '');
+    setOpportunityType(initialSearch.opportunityType || '');
+    runSearch(initialSearch);
+    onClearInitialSearch?.();
+    // The landing search is intentionally consumed once when this results view opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSearch]);
+  return <section className="browse-page"><div className="browse-hero"><span className="eyebrow">{hero.eyebrow}</span><h1>{hero.title}</h1><p>{hero.copy}</p><div className="browse-search"><Icon name="search"/><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder={hero.placeholder}/><Icon name="map"/><input className="location-search" value={location} onChange={e => setLocation(e.target.value)} placeholder="City, province, or Remote"/><button onClick={runSearch} disabled={searching}>{searching ? 'Searching...' : 'Search'}</button></div></div><div className="results-shell"><aside className="filter-panel"><b>Refine your search</b><div className="filter-group"><span>Role type</span>{filters.map(filter => <button key={filter} onClick={() => setFilter(filter)} className={(type === filter || (filter === 'Remote' && remote)) ? 'filter-choice checked' : 'filter-choice'}>{filter === 'Remote' ? 'Remote only' : filter}<i/></button>)}</div><div className="filter-group"><span>Experience</span><button onClick={() => setNoExperienceOnly(value => !value)} className={noExperienceOnly ? 'filter-choice checked' : 'filter-choice'}>No experience needed<i/></button><button className="filter-choice">0-2 years<i/></button></div><div className="scam-guidance"><b>Stay scam-aware</b><p>Never pay to apply or share banking details. Check that the source and application link match the employer before sending personal information.</p></div></aside><div className="search-results"><div className="results-title"><div><h2>{displayed.length} opportunities found</h2><p>{noExperienceOnly ? 'Showing roles that welcome applicants with no prior experience.' : source === 'adzuna' ? 'Live results powered by Adzuna.' : source === 'fallback' ? feedMessage : 'Matches based on your profile and search.'}</p></div><button className="sort-button">Most relevant</button></div>{error && <div className="search-error">{error}</div>}<div className="jobs-list">{displayed.length ? displayed.map(job => <JobCard key={job.id} job={job} saved={saved.includes(job.id)} applied={applications.some(a => a.id === job.id)} onSave={onSave} onApply={onApply}/>) : <div className="empty">No live opportunities match this search. Try a broader job title or location.</div>}</div></div></div></section>;
 }
 
 function NoExpNeeded({ saved, applications, onSave, onApply, jobList = jobs }) {
@@ -530,7 +785,7 @@ const MOCK_COMPANIES = [
   { name: 'Old Mutual', logo: 'O', color: '#eefbf3', text: '#008b45', industry: 'Financial Services & Investment', location: 'Harare, Zimbabwe', tagline: 'Helping you grow and protect your wealth for a secure future.', status: 'not-employing' },
 ];
 
-function BrowseEmployers({ setActive, jobList, notify, setJobSearchQuery }) {
+function BrowseEmployers({ setActive, jobList, notify, setJobSearchQuery, onPostJob, onOpenEmployerDashboard }) {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [notifiedCompanies, setNotifiedCompanies] = useState([]);
@@ -675,6 +930,32 @@ function BrowseEmployers({ setActive, jobList, notify, setJobSearchQuery }) {
               );
             }) : <div className="empty">No employers found matching your filters.</div>}
           </div>
+          <div className="employers-cta-banner" style={{ marginTop: '36px', background: 'linear-gradient(135deg, #1e4a3a, #133528)', borderRadius: '12px', padding: '28px 32px', color: '#fffaf0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+            <div style={{ maxWidth: '620px' }}>
+              <span style={{ color: '#b7eb67', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <Icon name="briefcase" size={13} /> For Employers & Recruiters
+              </span>
+              <h3 style={{ margin: '0 0 6px', fontSize: '20px', color: '#fffaf0', fontFamily: "'Playfair Display', Georgia, serif" }}>Are you hiring students or early-career talent?</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#d0dfd6', lineHeight: '1.5' }}>Connect with motivated students, graduates, and junior professionals. Post opportunities directly or manage your hiring pipeline in the employer dashboard.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button 
+                type="button" 
+                className="hiring-cta-btn" 
+                onClick={onPostJob || (() => setActive('Employer dashboard'))}
+              >
+                Post a Job
+              </button>
+              <button 
+                type="button" 
+                className="outline" 
+                style={{ background: 'transparent', color: '#fffaf0', border: '1px solid rgba(255,255,255,0.3)', padding: '12px 18px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                onClick={onOpenEmployerDashboard || (() => setActive('Employer dashboard'))}
+              >
+                For Employers
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -754,8 +1035,15 @@ function ApplicationModal({ job, onClose, onSubmit, onAudit }) {
   );
 }
 
-function AuthPage({ onSignIn }) {
-  const [mode, setMode] = useState('signin'); const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [accountType, setAccountType] = useState('candidate'); const [accountTypeTouched, setAccountTypeTouched] = useState(false); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
+function AuthPage({ onSignIn, initialMode = 'signin', initialAccountType = 'candidate' }) {
+  const [mode, setMode] = useState(initialMode); const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [accountType, setAccountType] = useState(initialAccountType); const [accountTypeTouched, setAccountTypeTouched] = useState(initialAccountType === 'employer'); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (initialMode) setMode(initialMode);
+    if (initialAccountType) {
+      setAccountType(initialAccountType);
+      if (initialAccountType === 'employer') setAccountTypeTouched(true);
+    }
+  }, [initialMode, initialAccountType]);
   const submit = async event => { event.preventDefault(); setError(''); setLoading(true); try { if (email === 'sean@gmail.com' && password === 'sean@123') { onSignIn({ name: 'Sean Demo', email, accountType: accountTypeTouched ? accountType : 'candidate' }); return; } if (!supabase) throw new Error('Supabase is not configured for this deployment.'); const result = mode === 'signup' ? await supabase.auth.signUp({ email, password, options: { data: { full_name: name, role: accountType } } }) : await supabase.auth.signInWithPassword({ email, password }); if (result.error) throw result.error; const user = result.data.user; if (!user) throw new Error('Check your email to confirm your account, then sign in.'); if (mode === 'signup' && !result.data.session) { setError('Account created. Check your email to confirm it, then sign in.'); return; } if (mode === 'signup') { const { error: profileError } = await supabase.from('profiles').upsert({ id: user.id, full_name: name, role: accountType }); if (profileError) throw profileError; } const { data: storedProfile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).maybeSingle(); const finalAccountType = accountTypeTouched ? accountType : (storedProfile?.role || user.user_metadata?.role || accountType); if (mode === 'signin' && accountTypeTouched && storedProfile?.role !== finalAccountType) { await supabase.from('profiles').upsert({ id: user.id, full_name: storedProfile?.full_name || name, role: finalAccountType }); } onSignIn({ name: storedProfile?.full_name || user.user_metadata?.full_name || name || email.split('@')[0], email, accountType: finalAccountType }); } catch (err) { setError(err.message || 'Could not sign in.'); } finally { setLoading(false); } };
   return <div className="auth-page"><section className="auth-art"><button className="brand"><span className="brand-mark">w</span><span>workly</span></button><div><span className="eyebrow">Work that moves you forward</span><h1>{accountType === 'employer' ? <>Hire early talent<br/><em>with confidence.</em></> : <>Start the career<br/><em>you deserve.</em></>}</h1><p>Use your email account to save your learning and opportunities securely.</p></div></section><section className="auth-form-wrap"><form className="auth-form" onSubmit={submit}><span className="eyebrow muted">Welcome to workly</span><h2>{mode === 'signin' ? 'Welcome back.' : 'Create your account.'}</h2>{error && <p className="auth-error">{error}</p>}<div className="account-type"><button type="button" className={accountType === 'candidate' ? 'selected' : ''} onClick={() => { setAccountType('candidate'); setAccountTypeTouched(true); }}>Job seeker</button><button type="button" className={accountType === 'employer' ? 'selected' : ''} onClick={() => { setAccountType('employer'); setAccountTypeTouched(true); }}>Employer</button></div>{mode === 'signup' && <label>Full name or company<input required value={name} onChange={e => setName(e.target.value)} /></label>}<label>Email address<input required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label><label>Password<input required type="password" minLength="6" value={password} onChange={e => setPassword(e.target.value)} /></label><button type="submit" disabled={loading}>{loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'} <Icon name="arrow" size={16}/></button><button type="button" className="auth-alt" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>{mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}</button></form></section></div>;
 }
@@ -769,13 +1057,13 @@ const suggestCategory = (title, description) => {
   return 'Full-time';
 };
 
-function EmployerDashboard({ employerJobs, onAddJob, onRemoveJob, onBack, profile, onSaveProfile }) {
+function EmployerDashboard({ employerJobs, onAddJob, onRemoveJob, onBack, profile, onSaveProfile, initialPage = 'Dashboard' }) {
   /* The legacy return below is intentionally retained while the dashboard is migrated. */
   /* eslint-disable no-unreachable */
   const [form, setForm] = useState({ role: '', company: '', place: 'Remote', description: '', salary: '', tags: '', publishDate: '', deadline: '', workStyle: 'Remote', experience: 'No experience required', applications: 'CV and short note' });
   const suggested = suggestCategory(form.role, form.description);
   const submit = event => { event.preventDefault(); const scheduled = form.publishDate && new Date(`${form.publishDate}T00:00`) > new Date(); onAddJob({ ...form, type: suggested, scheduled, tags: form.tags.split(',').map(tag => tag.trim()).filter(Boolean) }); setForm({ role: '', company: '', place: 'Remote', description: '', salary: '', tags: '', publishDate: '', deadline: '', workStyle: 'Remote', experience: 'No experience required', applications: 'CV and short note' }); };
-  return <EmployerRecruitmentDashboard employerJobs={employerJobs} onAddJob={onAddJob} onRemoveJob={onRemoveJob} onBack={onBack} profile={profile} onSaveProfile={onSaveProfile} />;
+  return <EmployerRecruitmentDashboard employerJobs={employerJobs} onAddJob={onAddJob} onRemoveJob={onRemoveJob} onBack={onBack} profile={profile} onSaveProfile={onSaveProfile} initialPage={initialPage} />;
   /* Legacy workspace retained below for reference during migration. */
   return <section className="employer-dashboard"><div className="employer-hero"><div><span className="eyebrow">Employer workspace</span><h1>Build your early-career team.</h1><p>Post now or schedule a role, then give applicants a clear and welcoming experience.</p></div><button onClick={onBack}>View candidate site <Icon name="arrow" size={16}/></button></div><div className="employer-grid"><form className="job-form" onSubmit={submit}><span className="eyebrow muted">New opportunity</span><h2>Post or schedule a job</h2><label>Job title<input required value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} placeholder="e.g. Software Engineering Intern"/></label><label>Company<input required value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} placeholder="Your company"/></label><div className="form-row"><label>Location<input required value={form.place} onChange={e => setForm({ ...form, place: e.target.value })}/></label><label>Salary / pay<input value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} placeholder="Competitive"/></label></div><div className="form-row"><label>Work style<select value={form.workStyle} onChange={e => setForm({ ...form, workStyle: e.target.value })}><option>Remote</option><option>Hybrid</option><option>On-site</option></select></label><label>Experience level<select value={form.experience} onChange={e => setForm({ ...form, experience: e.target.value })}><option>No experience required</option><option>Entry level</option><option>1–2 years experience</option></select></label></div><label>Skills (comma separated)<input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="React, JavaScript"/></label><label>Role description<textarea required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the opportunity, team and learning support..."/></label><div className="form-row"><label>Publish date <input type="date" value={form.publishDate} onChange={e => setForm({ ...form, publishDate: e.target.value })}/></label><label>Application deadline<input type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })}/></label></div><label>Application requirements<select value={form.applications} onChange={e => setForm({ ...form, applications: e.target.value })}><option>CV and short note</option><option>CV only</option><option>Portfolio and CV</option><option>Quick application form</option></select></label><div className="category-suggestion"><Icon name="spark" size={18}/><div><b>Suggested category: {suggested}</b><small>{form.publishDate ? `Scheduled for ${form.publishDate}.` : 'Ready to publish immediately.'}</small></div></div><button className="post-job" type="submit">{form.publishDate ? 'Schedule opportunity' : 'Publish opportunity'} <Icon name="arrow" size={16}/></button></form><aside className="posted-jobs"><span className="eyebrow muted">Employer profile</span><h2>{profile.name}</h2><p>{profile.email}</p><label className="employer-profile-field">Company name<input value={profile.name} onChange={e => onSaveProfile({ ...profile, name: e.target.value })}/></label><label className="employer-profile-field">Contact email<input type="email" value={profile.email} onChange={e => onSaveProfile({ ...profile, email: e.target.value })}/></label><span className="eyebrow muted listings-label">Your listings</span><h2>{employerJobs.length} roles</h2>{employerJobs.length ? employerJobs.map(job => <article key={job.id}><div><b>{job.role}</b><span>{job.workStyle || job.place} · {job.experience || job.type}</span><small>{job.scheduled ? `Scheduled for ${job.publishDate}` : job.deadline ? `Closes ${job.deadline}` : 'Live now'}</small></div><button type="button" onClick={() => onRemoveJob(job.id)}>Remove</button></article>) : <p>Your published and scheduled jobs will appear here.</p>}</aside></div></section>;
   return <section className="employer-dashboard"><div className="employer-hero"><div><span className="eyebrow">Employer workspace</span><h1>Build your early-career team.</h1><p>Create a listing and Workly will recommend the best category so candidates find it in the right place.</p></div><button onClick={onBack}>View candidate site <Icon name="arrow" size={16}/></button></div><div className="employer-grid"><form className="job-form" onSubmit={submit}><span className="eyebrow muted">New opportunity</span><h2>Post a job</h2><label>Job title<input required value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} placeholder="e.g. Software Engineering Intern" /></label><label>Company<input required value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} placeholder="Your company" /></label><div className="form-row"><label>Location<input required value={form.place} onChange={e => setForm({ ...form, place: e.target.value })} /></label><label>Salary / pay<input value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} placeholder="Competitive" /></label></div><label>Skills (comma separated)<input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="React, JavaScript" /></label><label>Role description<textarea required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the opportunity, level and learning support..." /></label><div className="category-suggestion"><Icon name="spark" size={18}/><div><b>Suggested category: {suggested}</b><small>{suggested === 'Internship' || suggested === 'Apprenticeship' ? 'This will also appear in Early Career Programmes.' : 'This will appear in the general job search.'}</small></div></div><button className="post-job" type="submit">Publish opportunity <Icon name="arrow" size={16}/></button></form><aside className="posted-jobs"><span className="eyebrow muted">Employer profile</span><h2>{profile.name}</h2><p>{profile.email}</p><label className="employer-profile-field">Company name<input value={profile.name} onChange={e => onSaveProfile({ ...profile, name: e.target.value })}/></label><label className="employer-profile-field">Contact email<input type="email" value={profile.email} onChange={e => onSaveProfile({ ...profile, email: e.target.value })}/></label><span className="eyebrow muted listings-label">Your listings</span><h2>{employerJobs.length} active {employerJobs.length === 1 ? 'role' : 'roles'}</h2>{employerJobs.length ? employerJobs.map(job => <article key={job.id}><div><b>{job.role}</b><span>{job.company} Â· {job.type} Â· {job.place}</span><small>{job.categoryNote}</small></div><button onClick={() => onRemoveJob(job.id)}>Remove</button></article>) : <p>Your published jobs will appear here. Remove a listing once the role is filled.</p>}</aside></div></section>;
@@ -783,9 +1071,13 @@ function EmployerDashboard({ employerJobs, onAddJob, onRemoveJob, onBack, profil
 }
 
 /* eslint-disable no-unreachable */
-function EmployerRecruitmentDashboard({ employerJobs, onAddJob, onRemoveJob, onBack, profile }) {
-  return <EmployerRecruitmentDashboardV2 employerJobs={employerJobs} onAddJob={onAddJob} onRemoveJob={onRemoveJob} onBack={onBack} profile={profile} />;
-  /* First dashboard iteration retained below while the recruitment workspace evolves. */
+function EmployerRecruitmentDashboard({ employerJobs, onAddJob, onRemoveJob, onBack, profile, onSaveProfile, initialPage = 'Dashboard' }) {
+  return <EmployerRecruitmentDashboardV2 employerJobs={employerJobs} onAddJob={onAddJob} onRemoveJob={onRemoveJob} onBack={onBack} profile={profile} initialPage={initialPage} />;
+}
+
+/* First dashboard iteration retained below while the recruitment workspace evolves. */
+// eslint-disable-next-line no-unused-vars
+function LegacyEmployerRecruitmentDashboard({ employerJobs, onAddJob, onRemoveJob, onBack, profile }) {
   const [page, setPage] = useState('Dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [filters, setFilters] = useState({ query: '', status: 'All statuses', type: 'All types', location: 'All locations', date: 'Any time' });
@@ -824,8 +1116,11 @@ const SAMPLE_CANDIDATES = [
   { id: 'noah', name: 'Noah Mensah', initials: 'NM', title: 'Software Engineer', job: 'Frontend Developer', applied: '14 Sep 2026', location: 'Accra, Ghana', email: 'noah.mensah@email.com', phone: '+233 24 600 4510', skills: ['React', 'Node.js', 'JavaScript'], status: 'Interview', bio: 'Engineer building practical products for ambitious teams.', experience: 'Software Engineering Fellow · Build Africa · 2024–2026', education: 'BSc Information Technology · Ashesi University · 2024', cv: 'Noah_Mensah_CV.pdf' },
 ];
 
-function EmployerRecruitmentDashboardV2({ employerJobs, onAddJob, onRemoveJob, onBack, profile }) {
-  const [page, setPage] = useState('Dashboard'); const [mobileOpen, setMobileOpen] = useState(false); const [candidates, setCandidates] = useState([]); const [selected, setSelected] = useState(null); const [notes, setNotes] = useState({}); const [jobDraft, setJobDraft] = useState({ title: '', company: profile.name || '', category: '', type: 'Full-time', location: '', minSalary: '', maxSalary: '', description: '', responsibilities: '', requirements: '', skills: '', experience: 'Entry level', deadline: '', positions: '1', screening: '' }); const [jobError, setJobError] = useState(''); const [preview, setPreview] = useState(false); const [interviews, setInterviews] = useState([]); const [interviewForm, setInterviewForm] = useState({ candidate: '', job: '', date: '', time: '', type: 'Video', place: '', notes: '' }); const [conversationId, setConversationId] = useState(''); const [message, setMessage] = useState(''); const [messages, setMessages] = useState({}); const [company, setCompany] = useState({ name: profile.name || '', industry: '', description: '', location: '', website: '', email: profile.email || '', phone: '', size: '1–10', linkedin: '', twitter: '', logo: '' }); const [notifications, setNotifications] = useState([]);
+function EmployerRecruitmentDashboardV2({ employerJobs, onAddJob, onRemoveJob, onBack, profile, initialPage = 'Dashboard' }) {
+  const [page, setPage] = useState(initialPage); const [mobileOpen, setMobileOpen] = useState(false); const [candidates, setCandidates] = useState([]); const [selected, setSelected] = useState(null); const [notes, setNotes] = useState({}); const [jobDraft, setJobDraft] = useState({ title: '', company: profile.name || '', category: '', type: 'Full-time', location: '', minSalary: '', maxSalary: '', description: '', responsibilities: '', requirements: '', skills: '', experience: 'Entry level', deadline: '', positions: '1', screening: '' }); const [jobError, setJobError] = useState(''); const [preview, setPreview] = useState(false); const [interviews, setInterviews] = useState([]); const [interviewForm, setInterviewForm] = useState({ candidate: '', job: '', date: '', time: '', type: 'Video', place: '', notes: '' }); const [conversationId, setConversationId] = useState(''); const [message, setMessage] = useState(''); const [messages, setMessages] = useState({}); const [company, setCompany] = useState({ name: profile.name || '', industry: '', description: '', location: '', website: '', email: profile.email || '', phone: '', size: '1–10', linkedin: '', twitter: '', logo: '' }); const [notifications, setNotifications] = useState([]);
+  useEffect(() => {
+    if (initialPage) setPage(initialPage);
+  }, [initialPage]);
   const nav = [['Dashboard', '▦'], ['Jobs', '▣'], ['Applications', '◌'], ['Shortlisted', '★'], ['Candidates', '◎'], ['Interviews', '◷'], ['Messages', '✉'], ['Analytics', '◔'], ['Company Profile', '▤'], ['Team', '♙'], ['Notifications', '●'], ['Settings', '⚙']];
   const updateCandidate = async (id, status) => {
     const previous = candidates;
@@ -896,8 +1191,8 @@ function EmployerRecruitmentDashboardV2({ employerJobs, onAddJob, onRemoveJob, o
     return () => window.clearInterval(timer);
   }, [page, profile.name]);
   return <div className="er2-shell"><aside className={mobileOpen ? 'er2-side open' : 'er2-side'}><button className="er2-brand" onClick={() => setPage('Dashboard')}><span>W</span> workly</button><small>EMPLOYER WORKSPACE</small><nav>{nav.map(([name, icon]) => <button key={name} className={page === name || (name === 'Jobs' && page === 'Post a Job') ? 'active' : ''} onClick={() => { setPage(name); setMobileOpen(false); }}><i>{icon}</i>{name}{name === 'Applications' && <em>{candidates.length}</em>}</button>)}</nav><div><button className="er2-candidate" onClick={onBack}>↗ Candidate view</button><div className="er2-account"><span>{(profile.name || 'CO').slice(0, 2).toUpperCase()}</span><div><b>{profile.name || 'Your company'}</b><small>Employer account</small></div></div></div></aside><main><header className="er2-top"><button className="er2-menu" onClick={() => setMobileOpen(!mobileOpen)}>☰</button><div><span>Employer workspace</span><b>{title}</b></div><button className="er2-post" onClick={() => setPage('Post a Job')}>+ Post a job</button></header>
-    {page === 'Dashboard' && <section className="er2-content"><div className="er2-heading"><div><p>Good morning, {profile.name || 'there'} 👋</p><h1>Here’s what’s happening with your recruitment activity.</h1></div></div><div className="er2-stats">{[['Active jobs', employerJobs.length, 'Live opportunities', '▣', 'Jobs'], ['Total applications', candidates.length, 'New this week', '◌', 'Applications'], ['Shortlisted', candidates.filter(x => x.status === 'Shortlisted').length, 'Ready for review', '★', 'Shortlisted'], ['Upcoming interviews', interviews.length, 'Across your team', '◷', 'Interviews']].map(([label, value, note, icon, target]) => <button key={label} onClick={() => setPage(target)}><i>{icon}</i><small>{label}</small><b>{value}</b><span>{note} →</span></button>)}</div><div className="er2-grid"><section className="er2-card"><header><div><h2>Recent applications</h2><p>Candidates who need your attention</p></div><button onClick={() => setPage('Applications')}>View all →</button></header>{candidates.slice(0, 3).map(c => <article className="er2-mini" key={c.id}><span>{c.initials}</span><div><b>{c.name}</b><small>{c.title} · {c.job}</small></div><em className={`er2-status ${c.status.toLowerCase()}`}>{c.status}</em></article>)}</section><section className="er2-card"><header><div><h2>Active jobs</h2><p>Performance at a glance</p></div><button onClick={() => setPage('Jobs')}>Manage →</button></header>{employerJobs.slice(0, 3).map((job, i) => <article className="er2-mini" key={job.id}><span>{job.role?.[0]}</span><div><b>{job.role}</b><small>{job.place} · {job.type}</small></div><strong>{12 + i * 7} <small>apps</small></strong></article>)}{!employerJobs.length && <div className="er2-empty">Post a job to start building your team.<button onClick={() => setPage('Post a Job')}>Post a job</button></div>}</section></div></section>}
-    {page === 'Jobs' && <section className="er2-content"><div className="er2-heading"><div><p>Job management</p><h1>All jobs</h1><span>Manage your open opportunities.</span></div><button className="er2-post" onClick={() => setPage('Post a Job')}>+ Post a job</button></div><div className="er2-card er2-table"><table><thead><tr><th>JOB</th><th>STATUS</th><th>APPLICATIONS</th><th>POSTED</th><th></th></tr></thead><tbody>{employerJobs.map((job, i) => <tr key={job.id}><td><b>{job.role}</b><small>{job.place} · {job.type}</small></td><td><em className="er2-status active">Active</em></td><td><button onClick={() => setPage('Applications')}>{12 + i * 7} applications</button></td><td>{job.time || 'Recently posted'}</td><td><button onClick={() => onRemoveJob(job.id)}>Archive</button></td></tr>)}</tbody></table>{!employerJobs.length && <div className="er2-empty">No jobs yet.<button onClick={() => setPage('Post a Job')}>Post your first job</button></div>}</div></section>}
+    {page === 'Dashboard' && <section className="er2-content"><div className="er2-heading"><div><p>Good morning, {profile.name || 'there'} 👋</p><h1>Here’s what’s happening with your recruitment activity.</h1></div></div><div className="er2-stats">{[['Active jobs', employerJobs.length, 'Live opportunities', '▣', 'Jobs'], ['Total applications', candidates.length, 'Current total', '◌', 'Applications'], ['Shortlisted', candidates.filter(x => x.status === 'Shortlisted').length, 'Ready for review', '★', 'Shortlisted'], ['Upcoming interviews', interviews.length, 'Across your team', '◷', 'Interviews']].map(([label, value, note, icon, target]) => <button key={label} onClick={() => setPage(target)}><i>{icon}</i><small>{label}</small><b>{value}</b><span>{note} →</span></button>)}</div><div className="er2-grid"><section className="er2-card"><header><div><h2>Recent applications</h2><p>Candidates who need your attention</p></div><button onClick={() => setPage('Applications')}>View all →</button></header>{candidates.slice(0, 3).map(c => <article className="er2-mini" key={c.id}><span>{c.initials}</span><div><b>{c.name}</b><small>{c.title} · {c.job}</small></div><em className={`er2-status ${c.status.toLowerCase()}`}>{c.status}</em></article>)}</section><section className="er2-card"><header><div><h2>Active jobs</h2><p>Performance at a glance</p></div><button onClick={() => setPage('Jobs')}>Manage →</button></header>{employerJobs.slice(0, 3).map(job => <article className="er2-mini" key={job.id}><span>{job.role?.[0]}</span><div><b>{job.role}</b><small>{job.place} · {job.type}</small></div><strong>{appRows.filter(candidate => candidate.job === job.role).length} <small>apps</small></strong></article>)}{!employerJobs.length && <div className="er2-empty">Post a job to start building your team.<button onClick={() => setPage('Post a Job')}>Post a job</button></div>}</section></div></section>}
+    {page === 'Jobs' && <section className="er2-content"><div className="er2-heading"><div><p>Job management</p><h1>All jobs</h1><span>Manage your open opportunities.</span></div><button className="er2-post" onClick={() => setPage('Post a Job')}>+ Post a job</button></div><div className="er2-card er2-table"><table><thead><tr><th>JOB</th><th>STATUS</th><th>APPLICATIONS</th><th>POSTED</th><th></th></tr></thead><tbody>{employerJobs.map(job => <tr key={job.id}><td><b>{job.role}</b><small>{job.place} · {job.type}</small></td><td><em className="er2-status active">Active</em></td><td><button onClick={() => setPage('Applications')}>{appRows.filter(candidate => candidate.job === job.role).length} applications</button></td><td>{job.time || 'Recently posted'}</td><td><button onClick={() => onRemoveJob(job.id)}>Archive</button></td></tr>)}</tbody></table>{!employerJobs.length && <div className="er2-empty">No jobs yet.<button onClick={() => setPage('Post a Job')}>Post your first job</button></div>}</div></section>}
     {page === 'Post a Job' && <section className="er2-content"><div className="er2-heading"><div><p>Job management</p><h1>Post a job</h1><span>Fields marked * are required before publishing.</span></div></div><form className="er2-form" onSubmit={e => publish(e)}>{jobError && <p className="er2-error">{jobError}</p>}<h2>Job details</h2><div className="two"><label>Job title *<input value={jobDraft.title} onChange={e => setJobDraft({ ...jobDraft, title: e.target.value })}/></label><label>Company *<input value={jobDraft.company} onChange={e => setJobDraft({ ...jobDraft, company: e.target.value })}/></label><label>Category *<input value={jobDraft.category} onChange={e => setJobDraft({ ...jobDraft, category: e.target.value })} placeholder="e.g. Engineering"/></label><label>Employment type *<select value={jobDraft.type} onChange={e => setJobDraft({ ...jobDraft, type: e.target.value })}>{['Full-time', 'Part-time', 'Contract', 'Internship', 'Graduate'].map(x => <option key={x}>{x}</option>)}</select></label><label>Location *<input value={jobDraft.location} onChange={e => setJobDraft({ ...jobDraft, location: e.target.value })}/></label><label>Experience level<select value={jobDraft.experience} onChange={e => setJobDraft({ ...jobDraft, experience: e.target.value })}>{['Entry level', 'Mid level', 'Senior level', 'No experience required'].map(x => <option key={x}>{x}</option>)}</select></label><label>Minimum salary<input type="number" value={jobDraft.minSalary} onChange={e => setJobDraft({ ...jobDraft, minSalary: e.target.value })}/></label><label>Maximum salary<input type="number" value={jobDraft.maxSalary} onChange={e => setJobDraft({ ...jobDraft, maxSalary: e.target.value })}/></label><label>Application deadline *<input type="date" value={jobDraft.deadline} onChange={e => setJobDraft({ ...jobDraft, deadline: e.target.value })}/></label><label>Number of positions<input min="1" type="number" value={jobDraft.positions} onChange={e => setJobDraft({ ...jobDraft, positions: e.target.value })}/></label></div><label>Job description *<textarea value={jobDraft.description} onChange={e => setJobDraft({ ...jobDraft, description: e.target.value })}/></label><label>Responsibilities<textarea value={jobDraft.responsibilities} onChange={e => setJobDraft({ ...jobDraft, responsibilities: e.target.value })}/></label><label>Requirements *<textarea value={jobDraft.requirements} onChange={e => setJobDraft({ ...jobDraft, requirements: e.target.value })}/></label><label>Required skills *<input value={jobDraft.skills} onChange={e => setJobDraft({ ...jobDraft, skills: e.target.value })} placeholder="React, TypeScript, CSS"/></label><label>Optional screening question<input value={jobDraft.screening} onChange={e => setJobDraft({ ...jobDraft, screening: e.target.value })} placeholder="Do you have experience with React?"/></label><div className="er2-form-actions"><button type="button" onClick={e => publish(e, true)}>Save draft</button><button type="button" onClick={() => setPreview(true)}>Preview</button><button className="er2-post" type="submit">Publish job →</button></div></form>{preview && <div className="er2-modal"><article><button onClick={() => setPreview(false)}>×</button><p>JOB PREVIEW</p><h2>{jobDraft.title || 'Untitled job'}</h2><b>{jobDraft.company} · {jobDraft.location}</b><h3>About the role</h3><p>{jobDraft.description || 'Add a job description to preview this listing.'}</p></article></div>}</section>}
     {(page === 'Applications' || page === 'Shortlisted' || page === 'Candidates') && <section className="er2-content"><div className="er2-heading"><div><p>Recruitment pipeline</p><h1>{page === 'Candidates' ? 'Candidates' : title}</h1><span>Move people through each stage with confidence.</span></div></div><div className="er2-pipeline">{PIPELINE.slice(0, 6).map(status => <span key={status}><b>{candidates.filter(c => c.status === status).length}</b>{status}</span>)}</div><div className="er2-card er2-table"><table><thead><tr><th>CANDIDATE</th><th>JOB</th><th>SKILLS</th><th>APPLIED</th><th>STATUS</th><th></th></tr></thead><tbody>{appRows.map(c => <tr key={c.id}><td><button className="er2-person" onClick={() => setSelected(c)}><span>{c.initials}</span><div><b>{c.name}</b><small>{c.location}</small></div></button></td><td>{c.job}</td><td><small>{c.skills.slice(0, 2).join(' · ')}</small></td><td>{c.applied}</td><td><select value={c.status} onChange={e => updateCandidate(c.id, e.target.value)}>{PIPELINE.map(s => <option key={s}>{s}</option>)}</select></td><td><button onClick={() => setSelected(c)}>View candidate</button></td></tr>)}</tbody></table>{!appRows.length && <div className="er2-empty">No shortlisted candidates yet.</div>}</div></section>}
     {page === 'Interviews' && <section className="er2-content"><div className="er2-heading"><div><p>Interview coordination</p><h1>Interviews</h1><span>Schedule and manage candidate conversations.</span></div></div><div className="er2-interview-layout"><form className="er2-form" onSubmit={schedule}><h2>Schedule interview</h2><label>Candidate<select value={interviewForm.candidate} onChange={e => setInterviewForm({ ...interviewForm, candidate: e.target.value })}><option value="">Select candidate</option>{candidates.filter(c => ['Shortlisted', 'Interview'].includes(c.status)).map(c => <option key={c.id}>{c.name}</option>)}</select></label><label>Job<select value={interviewForm.job} onChange={e => setInterviewForm({ ...interviewForm, job: e.target.value })}><option value="">Select job</option>{[...new Set(candidates.map(c => c.job))].map(j => <option key={j}>{j}</option>)}</select></label><div className="two"><label>Date<input type="date" value={interviewForm.date} onChange={e => setInterviewForm({ ...interviewForm, date: e.target.value })}/></label><label>Time<input type="time" value={interviewForm.time} onChange={e => setInterviewForm({ ...interviewForm, time: e.target.value })}/></label></div><label>Interview type<select value={interviewForm.type} onChange={e => setInterviewForm({ ...interviewForm, type: e.target.value })}>{['Video', 'Phone', 'In-person'].map(x => <option key={x}>{x}</option>)}</select></label><label>Meeting link / location<input value={interviewForm.place} onChange={e => setInterviewForm({ ...interviewForm, place: e.target.value })}/></label><label>Additional notes<textarea value={interviewForm.notes} onChange={e => setInterviewForm({ ...interviewForm, notes: e.target.value })}/></label><button className="er2-post">Schedule interview</button></form><section><h2 className="er2-section-title">Upcoming interviews</h2>{interviews.map(item => <article className="er2-interview" key={item.id}><em>{item.type}</em><h3>{item.candidate}</h3><p>{item.job}</p><b>{item.date} · {item.time}</b><small>{item.place}</small><div><button onClick={() => setSelected(candidates.find(c => c.name === item.candidate))}>View candidate</button><button onClick={() => setInterviews(list => list.filter(x => x.id !== item.id))}>Cancel</button></div></article>)}</section></div></section>}
@@ -1961,6 +2256,391 @@ function PostApplyPromptModal({ job, onGoToPrep, onDismiss }) {
   );
 }
 
+function FooterInfoModal({ activeTab, onClose, notify }) {
+  const [currentTab, setCurrentTab] = useState(activeTab || 'about');
+  const [expandedFaq, setExpandedFaq] = useState(null);
+  const [faqFilter, setFaqFilter] = useState('all');
+  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', category: 'General Feedback', message: '' });
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (activeTab) {
+      setCurrentTab(activeTab);
+      setContactSubmitted(false);
+    }
+  }, [activeTab]);
+
+  if (!activeTab) return null;
+
+  const faqs = [
+    {
+      id: 'faq-1',
+      category: 'candidate',
+      q: 'Is Job.Workly free for job seekers and students?',
+      a: 'Yes! Job.Workly is 100% free for all students, graduates, and candidates. You can explore career pathways, browse verified openings, check your CV against job descriptions using our ATS Checker, and practice interview questions without paying a cent. Employers are strictly prohibited from charging candidates any fee.'
+    },
+    {
+      id: 'faq-2',
+      category: 'candidate',
+      q: 'What is the "No Experience Needed" filter?',
+      a: 'This filter surfaces internships, graduate trainee programmes, apprenticeships, and entry-level positions where employers hire based on raw curiosity, problem-solving potential, and willingness to learn rather than demanding 3–5 years of previous experience.'
+    },
+    {
+      id: 'faq-3',
+      category: 'candidate',
+      q: 'How does the ATS Checker optimize my CV?',
+      a: 'Our built-in ATS checker analyzes the exact keyword match, section structure, and technical competency signals between your resume and the job listing, giving you actionable suggestions to ensure applicant tracking software ranks your submission highly.'
+    },
+    {
+      id: 'faq-4',
+      category: 'employer',
+      q: 'How do employers post jobs on Job.Workly?',
+      a: 'Click "Post a role" in the footer or visit the Employer Dashboard. You can register your company profile, specify candidate requirements, set competitive salary/stipend ranges, and publish listings immediately or schedule them for a specific date.'
+    },
+    {
+      id: 'faq-5',
+      category: 'employer',
+      q: 'What talent pool does Job.Workly connect employers with?',
+      a: 'Job.Workly connects you with verified students, recent university/polytechnic graduates, self-taught tech apprentices, and early-career specialists across Zimbabwe and the surrounding region.'
+    },
+    {
+      id: 'faq-6',
+      category: 'trust',
+      q: 'How does Job.Workly protect users against fraudulent job postings?',
+      a: 'All listings undergo vetting against strict scam indicators. Workly enforces a zero-tolerance policy against any company requesting application fees, interview payments, or sensitive banking details.'
+    },
+    {
+      id: 'faq-7',
+      category: 'trust',
+      q: 'How do I report a suspicious listing or employer?',
+      a: 'If you notice a questionable listing or an employer asking for money, send an urgent note to support@jobworkly.com or use the Contact form in this modal. Our trust and safety team reviews reports promptly.'
+    }
+  ];
+
+  const filteredFaqs = faqs.filter(item => faqFilter === 'all' || item.category === faqFilter);
+
+  const handleContactSubmit = e => {
+    e.preventDefault();
+    if (!contactForm.name.trim() || !contactForm.email.trim() || !contactForm.message.trim()) {
+      notify('Please fill in your name, email, and message.');
+      return;
+    }
+    setContactSubmitted(true);
+    notify('Thank you! Your message has been sent to our support team.');
+    setContactForm({ name: '', email: '', subject: '', category: 'General Feedback', message: '' });
+  };
+
+  return (
+    <div className="info-modal-backdrop" role="dialog" aria-modal="true" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="info-modal-shell">
+        <header className="info-modal-header">
+          <div className="info-modal-title-area">
+            <span className="brand-mark">w</span>
+            <h2>Job.Workly Platform & Legal Guide</h2>
+          </div>
+          <button className="info-modal-close" onClick={onClose} aria-label="Close dialog">✕</button>
+        </header>
+
+        <nav className="info-modal-nav" aria-label="Modal sections">
+          <button className={`info-tab-btn ${currentTab === 'about' ? 'active' : ''}`} onClick={() => setCurrentTab('about')}>
+            <Icon name="info" size={13} /> About Job.Workly
+          </button>
+          <button className={`info-tab-btn ${currentTab === 'contact' ? 'active' : ''}`} onClick={() => setCurrentTab('contact')}>
+            <Icon name="mail" size={13} /> Contact Information
+          </button>
+          <button className={`info-tab-btn ${currentTab === 'faq' ? 'active' : ''}`} onClick={() => setCurrentTab('faq')}>
+            <Icon name="help" size={13} /> Help & FAQs
+          </button>
+          <button className={`info-tab-btn ${currentTab === 'privacy' ? 'active' : ''}`} onClick={() => setCurrentTab('privacy')}>
+            <Icon name="shield" size={13} /> Privacy Policy
+          </button>
+          <button className={`info-tab-btn ${currentTab === 'terms' ? 'active' : ''}`} onClick={() => setCurrentTab('terms')}>
+            <Icon name="check" size={13} /> Terms of Service
+          </button>
+        </nav>
+
+        <div className="info-modal-body">
+          {/* TAB: ABOUT */}
+          {currentTab === 'about' && (
+            <div>
+              <div className="info-section-hero">
+                <span className="eyebrow">Our Mission & Platform</span>
+                <h3>Empowering early-career talent to start with confidence</h3>
+                <p>
+                  Job.Workly is Zimbabwe's dedicated career launchpad designed specifically for university students, recent graduates, apprentices, and early-career professionals. We replace the frustrating "must have 3–5 years of experience" requirement with skills-first career exploration, provable project journeys, and verified direct connections to forward-thinking employers.
+                </p>
+              </div>
+
+              <div className="info-card-grid">
+                <div className="info-card">
+                  <div className="info-card-icon">🎓</div>
+                  <h4>Students & Graduates First</h4>
+                  <p>Curated apprenticeships, entry-level opportunities, and graduate programmes designed to help emerging talent land their first milestone.</p>
+                </div>
+                <div className="info-card">
+                  <div className="info-card-icon">🛠️</div>
+                  <h4>Practical Practice Labs</h4>
+                  <p>Work through realistic industry briefs and interactive journeys to generate tangible evidence of ability before applying.</p>
+                </div>
+                <div className="info-card">
+                  <div className="info-card-icon">🤝</div>
+                  <h4>Verified Employer Network</h4>
+                  <p>Reputable employers committed to fair junior hiring, structured mentorship, and transparent recruitment with zero candidate fees.</p>
+                </div>
+                <div className="info-card">
+                  <div className="info-card-icon">⚡</div>
+                  <h4>ATS & Interview Readiness</h4>
+                  <p>Integrated tools like Resumly and the ATS Checker help candidates fine-tune their CV keywords and practice interview answers.</p>
+                </div>
+              </div>
+
+              <div className="info-callout">
+                <p><strong>Our Philosophy:</strong> Traditional job platforms look backward at past job titles. Job.Workly looks forward at what you are capable of learning, building, and solving today.</p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: CONTACT */}
+          {currentTab === 'contact' && (
+            <div>
+              <div className="info-section-hero">
+                <span className="eyebrow">Direct Support & Inquiries</span>
+                <h3>We’re here to help you move forward</h3>
+                <p>Have questions about applications, candidate profiles, employer hiring packages, or partnerships? Reach out to our team in Harare.</p>
+              </div>
+
+              <div className="info-contact-layout">
+                <div className="info-contact-channels">
+                  <div className="info-contact-channel-item">
+                    <span className="info-channel-icon">📍</span>
+                    <div>
+                      <b>Office Location</b>
+                      <span>Harare Innovation Hub, 4th Floor<br/>Samora Machel Avenue, Harare, Zimbabwe</span>
+                    </div>
+                  </div>
+                  <div className="info-contact-channel-item">
+                    <span className="info-channel-icon">✉️</span>
+                    <div>
+                      <b>Candidate Support</b>
+                      <a href="mailto:support@jobworkly.com">support@jobworkly.com</a>
+                    </div>
+                  </div>
+                  <div className="info-contact-channel-item">
+                    <span className="info-channel-icon">🏢</span>
+                    <div>
+                      <b>Employer Partnerships</b>
+                      <a href="mailto:employers@jobworkly.com">employers@jobworkly.com</a>
+                    </div>
+                  </div>
+                  <div className="info-contact-channel-item">
+                    <span className="info-channel-icon">📞</span>
+                    <div>
+                      <b>Phone & WhatsApp</b>
+                      <a href="tel:+263771234567">+263 77 123 4567</a>
+                    </div>
+                  </div>
+                  <div className="info-contact-channel-item">
+                    <span className="info-channel-icon">🕒</span>
+                    <div>
+                      <b>Working Hours</b>
+                      <span>Monday – Friday: 08:00 – 17:00 CAT</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  {contactSubmitted ? (
+                    <div className="contact-success-state">
+                      <div className="contact-success-icon">✓</div>
+                      <h4>Message Sent Successfully</h4>
+                      <p>Thank you for reaching out! Our team will get back to you within 1 business day.</p>
+                      <button className="info-submit-btn" onClick={() => setContactSubmitted(false)}>Send Another Message</button>
+                    </div>
+                  ) : (
+                    <form className="info-contact-form" onSubmit={handleContactSubmit}>
+                      <div className="info-form-field">
+                        <label>Your Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Tendai Moyo"
+                          value={contactForm.name}
+                          onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="info-form-field">
+                        <label>Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="tendai@example.com"
+                          value={contactForm.email}
+                          onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
+                        />
+                      </div>
+                      <div className="info-form-field">
+                        <label>Topic / Role</label>
+                        <select
+                          value={contactForm.category}
+                          onChange={e => setContactForm({ ...contactForm, category: e.target.value })}
+                        >
+                          <option value="Candidate Support">Job Seeker / Candidate</option>
+                          <option value="Employer Partnership">Employer / Recruiter</option>
+                          <option value="Educational Partner">University / Institution</option>
+                          <option value="General Feedback">General Feedback</option>
+                        </select>
+                      </div>
+                      <div className="info-form-field">
+                        <label>Subject</label>
+                        <input
+                          type="text"
+                          placeholder="Brief topic of your inquiry"
+                          value={contactForm.subject}
+                          onChange={e => setContactForm({ ...contactForm, subject: e.target.value })}
+                        />
+                      </div>
+                      <div className="info-form-field">
+                        <label>Message</label>
+                        <textarea
+                          required
+                          rows="4"
+                          placeholder="How can we assist you?"
+                          value={contactForm.message}
+                          onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
+                        />
+                      </div>
+                      <button type="submit" className="info-submit-btn">Send Message</button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: FAQS */}
+          {currentTab === 'faq' && (
+            <div>
+              <div className="info-section-hero">
+                <span className="eyebrow">Help & Knowledge Base</span>
+                <h3>Frequently Asked Questions</h3>
+                <p>Everything you need to know about job applications, employer verification, ATS matching, and safety.</p>
+              </div>
+
+              <div className="faq-filter-pills">
+                <button className={`faq-filter-pill ${faqFilter === 'all' ? 'active' : ''}`} onClick={() => setFaqFilter('all')}>All Questions</button>
+                <button className={`faq-filter-pill ${faqFilter === 'candidate' ? 'active' : ''}`} onClick={() => setFaqFilter('candidate')}>For Candidates</button>
+                <button className={`faq-filter-pill ${faqFilter === 'employer' ? 'active' : ''}`} onClick={() => setFaqFilter('employer')}>For Employers</button>
+                <button className={`faq-filter-pill ${faqFilter === 'trust' ? 'active' : ''}`} onClick={() => setFaqFilter('trust')}>Trust & Safety</button>
+              </div>
+
+              <div className="faq-accordion-list">
+                {filteredFaqs.map(faq => {
+                  const isOpen = expandedFaq === faq.id;
+                  return (
+                    <div key={faq.id} className={`faq-item ${isOpen ? 'expanded' : ''}`}>
+                      <button
+                        className="faq-question-btn"
+                        onClick={() => setExpandedFaq(isOpen ? null : faq.id)}
+                        aria-expanded={isOpen}
+                      >
+                        <span>{faq.q}</span>
+                        <span className="faq-arrow">{isOpen ? '▲' : '▼'}</span>
+                      </button>
+                      {isOpen && <div className="faq-answer">{faq.a}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: PRIVACY POLICY */}
+          {currentTab === 'privacy' && (
+            <div className="legal-document">
+              <div className="info-section-hero">
+                <span className="eyebrow">Data Governance</span>
+                <h3>Job.Workly Privacy Policy</h3>
+                <p>Effective: January 2026 · Committed to transparency and candidate data protection.</p>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>1. Information We Collect</h4>
+                <p>We collect information submitted directly when registering, setting up a profile, auditing CVs, or applying for jobs:</p>
+                <ul>
+                  <li><strong>Account Data:</strong> Name, email address, password hash, and account designation (candidate or employer).</li>
+                  <li><strong>Profile & Resume Content:</strong> Educational background, target job preferences, work samples, headline, and uploaded CV files.</li>
+                  <li><strong>Platform Usage Data:</strong> Application statuses, saved opportunities, Practice Lab completions, and telemetry logs for site stability.</li>
+                </ul>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>2. How We Use Your Data</h4>
+                <p>We use your information exclusively to power your career search and connect you with verified employers:</p>
+                <ul>
+                  <li>Transmitting your profile and resume to employers when you explicitly click "Apply".</li>
+                  <li>Providing personalized ATS keyword analysis and interview preparation suggestions.</li>
+                  <li>Enforcing trust policies, preventing fraudulent postings, and protecting user accounts.</li>
+                </ul>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>3. We Never Sell Personal Data</h4>
+                <p>Job.Workly does not sell, rent, or trade personal candidate information to third-party data brokers or advertisers. Your CV is shared only with employers whose listings you deliberately apply to.</p>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>4. Data Security & Your Rights</h4>
+                <p>All platform communication is secured via HTTPS/TLS encryption and protected by database Row-Level Security (RLS). You can inspect, export, or permanently delete your account data at any time by contacting <code>privacy@jobworkly.com</code>.</p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: TERMS OF SERVICE */}
+          {currentTab === 'terms' && (
+            <div className="legal-document">
+              <div className="info-section-hero">
+                <span className="eyebrow">Platform Agreement</span>
+                <h3>Job.Workly Terms of Service</h3>
+                <p>Effective: January 2026 · Standard terms governing access to Job.Workly.</p>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>1. Acceptance of Terms</h4>
+                <p>By creating an account, browsing listings, or using Job.Workly tools, candidates and employers agree to be bound by these Terms of Service.</p>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>2. Candidate Commitments</h4>
+                <p>Candidates agree to provide accurate information regarding their education and experience, not engage in automated spam applications, and respect the confidentiality of employer interview communications.</p>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>3. Employer Hiring Code & Strict Zero Fee Rule</h4>
+                <p>Employers using Job.Workly agree to maintain ethical, transparent, and fair recruitment practices:</p>
+                <ul>
+                  <li><strong>Strict Zero Fees:</strong> Employers must NEVER charge applicants any fee for application submission, assessments, training, uniforms, or onboarding.</li>
+                  <li><strong>Genuine Opportunities:</strong> All posted vacancies must represent bona fide job, internship, or apprenticeship openings. Multi-level marketing schemes and fake postings are strictly prohibited.</li>
+                  <li><strong>Fair Treatment:</strong> Employers commit to treating all candidates respectfully regardless of background or previous experience.</li>
+                </ul>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>4. Anti-Scam Enforcement & Termination</h4>
+                <p>Job.Workly reserves the right to immediately terminate the account and remove listings of any user or company attempting fraud, scams, or unverified fee-based activities.</p>
+              </div>
+
+              <div className="legal-section-block">
+                <h4>5. Governing Law</h4>
+                <p>These terms are governed by the laws of Zimbabwe. Any legal proceedings arising from platform use will be conducted in Harare, Zimbabwe.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [active, setActive] = useState('Discover');
   const [saved, setSaved] = useState([]);
@@ -1972,10 +2652,14 @@ function App() {
   const [employerJobs, setEmployerJobs] = useState([]);
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [infoModalTab, setInfoModalTab] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showPrepPrompt, setShowPrepPrompt] = useState(null);
   const [profile, setProfile] = useState({ name: '', email: '', headline: 'Early-career professional', location: 'Harare, Zimbabwe' });
-  const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const [landingSearch, setLandingSearch] = useState(null);
+  const [employerInitialPage, setEmployerInitialPage] = useState('Dashboard');
+  const [authMode, setAuthMode] = useState('signin');
+  const [authType, setAuthType] = useState('candidate');
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -2016,20 +2700,71 @@ function App() {
   const submitApplication = (job) => { setApplications(current => [...current, { ...job, status: current.length === 1 ? 'Interview' : 'Reviewing' }]); setSelectedJob(null); setShowPrepPrompt(job); notify(`Application sent to ${job.company}`); };
   const addEmployerJob = async details => {
     try {
-      if (!supabase) throw new Error('Supabase is not configured for employer postings.');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Please sign in with an employer account to publish a job.');
-      const job = await createEmployerJob(user.id, details);
-      setEmployerJobs(current => [job, ...current]);
-      notify(job.scheduled ? 'Job scheduled successfully' : 'Job published successfully');
+      if (supabase) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const job = await createEmployerJob(user.id, details);
+          setEmployerJobs(current => [job, ...current]);
+          notify(job.scheduled ? 'Job scheduled successfully' : 'Job published successfully');
+          return;
+        }
+      }
+      const company = details.company?.trim() || profile.name || 'Hiring company';
+      const scheduled = Boolean(details.publishDate && new Date(`${details.publishDate}T00:00`) > new Date());
+      const newJob = {
+        id: `job-${Date.now()}`,
+        logo: company.slice(0, 1).toUpperCase(),
+        color: '#e5f4dd',
+        text: '#337044',
+        company,
+        role: details.role,
+        type: details.type || 'Full-time',
+        place: details.place || 'Remote',
+        time: 'Just now',
+        postedAt: new Date().toISOString(),
+        salary: details.salary || 'Competitive',
+        tags: details.tags || [],
+        match: 'Employer listing',
+        noExpNeeded: /intern|apprentice|trainee|entry|junior|graduate|assistant/i.test(details.role),
+        workStyle: details.workStyle || 'Remote',
+        scheduled,
+        deadline: details.deadline || '',
+      };
+      setEmployerJobs(current => [newJob, ...current]);
+      notify(scheduled ? 'Job scheduled successfully' : 'Job published successfully');
     } catch (error) { notify(error.message || 'Could not publish this job.'); }
   };
   const removeEmployerJob = async id => {
     try {
-      await deleteEmployerJob(id);
+      if (supabase) {
+        await deleteEmployerJob(id);
+      }
       setEmployerJobs(current => current.filter(job => job.id !== id));
       notify('Listing removed');
     } catch (error) { notify(error.message || 'Could not remove this listing.'); }
+  };
+
+  const openPostJob = () => {
+    setEmployerInitialPage('Post a Job');
+    setActive('Employer dashboard');
+  };
+
+  const openEmployerDashboard = (targetPage = 'Dashboard') => {
+    setEmployerInitialPage(targetPage);
+    setActive('Employer dashboard');
+  };
+
+  const openEmployerRegistration = async () => {
+    if (signedIn && accountType === 'employer') {
+      openEmployerDashboard('Dashboard');
+      return;
+    }
+    try {
+      await supabase?.auth.signOut();
+    } catch (err) {}
+    setSignedIn(false);
+    setAuthMode('signup');
+    setAuthType('employer');
   };
 
   // Shared header element
@@ -2047,14 +2782,14 @@ function App() {
           </div>
         </div>
       </header>
-      {mobileMenuOpen && <div className="mobile-nav-sheet" role="dialog" aria-modal="true" aria-label="Explore Workly"><button className="mobile-nav-backdrop" aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)}/><section><header><div><span className="brand-mark">w</span><div><b>Explore Workly</b><small>Everything in one place</small></div></div></header><button className="mobile-nav-close" aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)}>×</button><div className="mobile-nav-links">{nav.map(item => <button key={item} className={active === item ? 'active' : ''} onClick={() => { setActive(item); setMobileMenuOpen(false); }}><span>{item === 'Browse Employers' ? '◎' : item === 'Early Career Programmes' ? '↗' : item === 'ATS Checkers' ? '✦' : item === 'Find jobs' ? '⌕' : '◌'}</span>{item}</button>)}<button onClick={() => { setActive('PrepDashboard'); setMobileMenuOpen(false); }}><span>◈</span>Interview preparation</button>{accountType === 'employer' && <button onClick={() => { setActive('Employer dashboard'); setMobileMenuOpen(false); }}><span>▣</span>Employer dashboard</button>}</div><footer><button onClick={() => { setMobileMenuOpen(false); setProfileOpen(true); }}><span className="mini-avatar">{profile.name.split(' ').map(word => word[0]).join('').slice(0,2) || 'ME'}</span><div><b>{profile.name || 'Your profile'}</b><small>Profile settings</small></div><i>›</i></button></footer></section></div>}
+      {mobileMenuOpen && <div className="mobile-nav-sheet" role="dialog" aria-modal="true" aria-label="Explore Workly"><button className="mobile-nav-backdrop" aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)}/><section><header><div><span className="brand-mark">w</span><div><b>Explore Workly</b><small>Everything in one place</small></div></div></header><button className="mobile-nav-close" aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)}>×</button><div className="mobile-nav-links">{nav.map(item => <button key={item} className={active === item ? 'active' : ''} onClick={() => { setActive(item); setMobileMenuOpen(false); }}><span>{item === 'Browse Employers' ? '◎' : item === 'Early Career Programmes' ? '↗' : item === 'ATS Checkers' ? '✦' : item === 'Find jobs' ? '⌕' : '◌'}</span>{item}</button>)}<button onClick={() => { setActive('PrepDashboard'); setMobileMenuOpen(false); }}><span>◈</span>Interview preparation</button><button onClick={() => { openEmployerDashboard('Dashboard'); setMobileMenuOpen(false); }}><span>▣</span>Employer dashboard</button></div><footer><button onClick={() => { setMobileMenuOpen(false); setProfileOpen(true); }}><span className="mini-avatar">{profile.name.split(' ').map(word => word[0]).join('').slice(0,2) || 'ME'}</span><div><b>{profile.name || 'Your profile'}</b><small>Profile settings</small></div><i>›</i></button></footer></section></div>}
       <nav className="mobile-tabbar" aria-label="Mobile navigation">
         {[['Discover', 'Home'], ['Find jobs', 'Jobs'], ['My applications', 'Applied'], ['more', 'More']].map(([target, label]) => <button key={target} className={target === 'more' ? (mobileMenuOpen ? 'active' : '') : (active === target ? 'active' : '')} onClick={() => target === 'more' ? setMobileMenuOpen(true) : setActive(target)}><span>{target === 'Discover' ? '⌂' : target === 'Find jobs' ? '⌕' : target === 'My applications' ? '◌' : '☰'}</span>{label}</button>)}
       </nav>
     </>
   );
 
-  if (!signedIn) return <AuthPage onSignIn={async details => { setProfile(current => ({ ...current, ...details })); setAccountType(details.accountType); setSignedIn(true); setActive(details.accountType === 'employer' ? 'Employer dashboard' : 'Discover'); if (details.accountType === 'employer' && supabase) { const { data: { user } } = await supabase.auth.getUser(); if (user) { try { setEmployerJobs(await loadEmployerJobs(user.id)); } catch (error) { console.error('Could not load employer jobs:', error.message); } } } }} />;
+  if (!signedIn) return <AuthPage onSignIn={async details => { setProfile(current => ({ ...current, ...details })); setAccountType(details.accountType); setSignedIn(true); setActive(details.accountType === 'employer' ? 'Employer dashboard' : 'Discover'); if (details.accountType === 'employer' && supabase) { const { data: { user } } = await supabase.auth.getUser(); if (user) { try { setEmployerJobs(await loadEmployerJobs(user.id)); } catch (error) { console.error('Could not load employer jobs:', error.message); } } } }} initialMode={authMode} initialAccountType={authType} />;
 
   if (active === 'Employer dashboard') return (
     <div className="app-shell">
@@ -2065,7 +2800,7 @@ function App() {
           <button className="employer-button" onClick={async () => { await supabase?.auth.signOut(); setSignedIn(false); }}><Icon name="arrow" size={16}/>Log out</button>
         </div>
       </header>
-      <main><EmployerDashboard profile={profile} onSaveProfile={setProfile} employerJobs={employerJobs} onAddJob={addEmployerJob} onRemoveJob={removeEmployerJob} onBack={() => setActive('Discover')}/></main>
+      <main><EmployerDashboard profile={profile} onSaveProfile={setProfile} employerJobs={employerJobs} onAddJob={addEmployerJob} onRemoveJob={removeEmployerJob} onBack={() => setActive('Discover')} initialPage={employerInitialPage}/></main>
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
     </div>
   );
@@ -2094,9 +2829,9 @@ function App() {
     <div className="app-shell">
       {topNav}
       <main>
-        {active === 'Discover'          && <Discover setActive={setActive} notify={notify}/>}
-        {active === 'Browse Employers'  && <BrowseEmployers setActive={setActive} jobList={liveJobList} notify={notify} setJobSearchQuery={setJobSearchQuery}/>}
-        {active === 'Find jobs'         && <BrowseJobs jobList={liveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply} initialQuery={jobSearchQuery} onClearInitialQuery={() => setJobSearchQuery('')}/>}
+        {active === 'Discover'          && <Discover setActive={setActive} notify={notify} onJobSearch={search => { setLandingSearch(search); setActive('Find jobs'); }} jobList={liveJobList} feedLoading={feedLoading} onPostJob={openPostJob} onOpenEmployerDashboard={openEmployerDashboard} onRegisterEmployer={openEmployerRegistration} onOpenInfoModal={setInfoModalTab}/>}
+        {active === 'Browse Employers'  && <BrowseEmployers setActive={setActive} jobList={liveJobList} notify={notify} setJobSearchQuery={query => setLandingSearch({ query })} onPostJob={openPostJob} onOpenEmployerDashboard={openEmployerDashboard}/>}
+        {active === 'Find jobs'         && <BrowseJobs jobList={liveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply} initialSearch={landingSearch} onClearInitialSearch={() => setLandingSearch(null)}/>}
         {active === 'No Experience Needed' && <NoExpNeeded jobList={liveJobList} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
         {active === 'Internships'       && <BrowseJobs jobList={liveJobList} internshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
         {active === 'Apprenticeships'   && <BrowseJobs jobList={liveJobList} apprenticeshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
@@ -2109,6 +2844,7 @@ function App() {
       {profileOpen && <ProfileModal profile={profile} onClose={() => setProfileOpen(false)} onSave={async details => {
         try { const { data: { user } } = await supabase.auth.getUser(); if (!user) throw new Error('Please sign in again.'); const { error } = await supabase.from('profiles').update({ full_name: details.name, headline: details.headline, location: details.location }).eq('id', user.id); if (error) throw error; setProfile(current => ({ ...current, ...details })); setProfileOpen(false); notify('Profile settings saved'); } catch (error) { notify(error.message || 'Could not save profile settings'); }
       }}/>}
+      <FooterInfoModal activeTab={infoModalTab} onClose={() => setInfoModalTab(null)} notify={notify} />
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
     </div>
   );

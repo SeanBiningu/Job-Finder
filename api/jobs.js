@@ -34,10 +34,12 @@ const normalize = (job, index) => {
   type: job.contract_time === 'full_time' ? 'Full-time' : job.contract_time === 'part_time' ? 'Part-time' : job.contract_type ? job.contract_type.replace(/^./, char => char.toUpperCase()) : 'Not specified',
   place: location,
   time: job.created ? new Date(job.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently posted',
+  postedAt: job.created || '',
   salary,
   tags: job.category?.label ? [job.category.label] : [],
   match: 'New opportunity',
   url: job.redirect_url || null,
+  source: 'Adzuna',
   noExpNeeded: /intern|apprentice|trainee|entry|junior|graduate|assistant/i.test(title),
 };
 };
@@ -45,6 +47,7 @@ const normalize = (job, index) => {
 export default async function handler(req, res) {
   const query = String(req.query.query || '').trim();
   const location = String(req.query.location || '').trim();
+  const opportunityType = String(req.query.opportunityType || '').trim();
   const internshipOnly = req.query.internship === 'true';
   const apprenticeshipOnly = req.query.apprenticeship === 'true';
   const requestedPage = Math.max(1, Math.min(Number.parseInt(req.query.page, 10) || 1, 5));
@@ -59,7 +62,15 @@ export default async function handler(req, res) {
     return fallbackResults('Live jobs are not configured yet. Add the Adzuna environment variables in Vercel, then redeploy.');
   }
   try {
-    const terms = [query, internshipOnly ? 'internship' : '', apprenticeshipOnly ? 'apprenticeship' : ''].filter(Boolean).join(' ');
+    const opportunityTerms = {
+      Internship: 'internship',
+      Attachment: 'attachment',
+      Graduate: 'graduate programme',
+      'Entry level': 'entry level',
+      'Internships & attachments': 'internship OR attachment',
+      'Scholarships & development': 'scholarship OR career development OR fellowship',
+    };
+    const terms = [query, opportunityTerms[opportunityType] || '', internshipOnly ? 'internship' : '', apprenticeshipOnly ? 'apprenticeship' : ''].filter(Boolean).join(' ');
     const params = new URLSearchParams({ app_id: appId, app_key: appKey, results_per_page: '25', 'content-type': 'application/json' });
     if (terms) params.set('what', terms);
     if (location) params.set('where', location);
