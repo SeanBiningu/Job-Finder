@@ -31,6 +31,7 @@ const normalize = (job, index) => {
   text: style.text,
   company,
   role: title,
+    description: job.description || '',
   type: job.contract_time === 'full_time' ? 'Full-time' : job.contract_time === 'part_time' ? 'Part-time' : job.contract_type ? job.contract_type.replace(/^./, char => char.toUpperCase()) : 'Not specified',
   place: location,
   time: job.created ? new Date(job.created).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Recently posted',

@@ -2255,6 +2255,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* Listing provenance and safety guidance */
 .listing-trust{display:flex;align-items:center;flex-wrap:wrap;gap:5px 10px;margin-top:8px;color:#687a6f;font-size:9px}.listing-trust span{display:inline-flex;align-items:center;gap:3px}.listing-trust .listing-verified{color:#34723e;background:#edf8e9;border:1px solid #cfe7c7;border-radius:10px;padding:3px 6px;font-weight:700}.scam-guidance{margin-top:21px;padding:12px;border-radius:7px;background:#fff5e7;border:1px solid #f0d7b4;color:#684d2e}.scam-guidance b{font-size:11px}.scam-guidance p{margin:5px 0 0;font-size:10px;line-height:1.45}@media(max-width:700px){.scam-guidance{display:none}}
 
+/* Keep header labels on one line and avoid collisions at narrower widths. */
+.topbar{gap:clamp(18px,3vw,54px)}.topbar .brand{flex:0 0 auto;white-space:nowrap}.topbar nav{flex:1;min-width:0;gap:clamp(14px,1.8vw,28px);justify-content:space-between}.topbar .nav-item{flex:0 0 auto;white-space:nowrap}.top-actions{flex:0 0 auto;white-space:nowrap}@media(max-width:1220px){.topbar{padding-left:24px;padding-right:24px}.topbar .nav-item{font-size:13px}.top-actions{gap:9px}.live-badge{display:none}}@media(min-width:651px) and (max-width:980px){.topbar{gap:16px}.topbar nav{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}.topbar nav::-webkit-scrollbar{display:none}.topbar .nav-item{padding:2px 1px}.employer-button{padding:8px;font-size:0}.employer-button svg{margin:0}}
+
 /* Footer Info Modal & Footer Social Links */
 .workly-footer-socials a.footer-social-link {
   display: inline-flex;

@@ -3,6 +3,9 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import mammoth from 'mammoth';
 import { createWorker } from 'tesseract.js';
 import './App.css';
+import './aiStyles.css';
+import { AIProfileModal } from './AIProfileModal';
+import { useAIJobMatching } from './services/useAIJobMatching';
 import { searchJobs } from './services/jobSearch';
 import { useJobFeed } from './services/useJobFeed';
 import { supabase } from './services/supabase';
@@ -150,6 +153,8 @@ const Icon = ({ name, size = 20 }) => {
     mail: <><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></>,
     help: <><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></>,
     shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
+    eye: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
+    'eye-off': <><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 };
@@ -216,7 +221,7 @@ function JobCard({ job, saved, applied, onSave, onApply }) {
     onApply(job);
   };
 
-  return <article className="job-card"><div className="company-logo" style={{ background: job.color, color: job.text }}>{job.logo}</div><div className="job-info"><div className="job-top"><span>{job.company}</span><small>{job.time}</small></div><h3>{job.role}</h3><div className="meta"><span>{job.type}</span><i/><span>{job.place}</span><i/><span>{job.salary}</span></div><div className="listing-trust"><span>Source: {job.source || 'Source not provided'}</span>{job.deadline && <span>Apply by {formatDeadline(job.deadline)}</span>}{job.verified === true && <span className="listing-verified"><Icon name="check" size={12}/>Verified listing</span>}</div><div className="tags">{job.tags.map(tag => <span key={tag}>{tag}</span>)}</div></div><div className="job-side"><span className="match"><Icon name="spark" size={13}/>{job.match}</span><div className="card-actions"><button className="apply-small" onClick={applyFromListing}>{applied ? 'Applied' : hasApplicationLink ? 'Open application' : 'Apply'}</button><button aria-label="Save job" className={saved ? 'save saved' : 'save'} onClick={() => onSave(job.id)}><Icon name="bookmark" size={19}/></button></div></div></article>;
+  return <article className="job-card"><div className="company-logo" style={{ background: job.color, color: job.text }}>{job.logo}</div><div className="job-info"><div className="job-top"><span>{job.company}</span><small>{job.time}</small></div><h3>{job.role}</h3><div className="meta"><span>{job.type}</span><i/><span>{job.place}</span><i/><span>{job.salary}</span></div><div className="listing-trust"><span>Source: {job.source || 'Source not provided'}</span>{job.deadline && <span>Apply by {formatDeadline(job.deadline)}</span>}{job.verified === true && <span className="listing-verified"><Icon name="check" size={12}/>Verified listing</span>}</div><div className="tags">{job.tags.map(tag => <span key={tag}>{tag}</span>)}</div>{job.matchingSkills && job.matchingSkills.length > 0 && <div className="job-ai-matching-skills">🎯 Matches: {job.matchingSkills.slice(0, 3).join(', ')}</div>}{job.aiRecommendation && <div className="job-ai-reason">{job.aiRecommendation}</div>}</div><div className="job-side"><span className={`match ${job.aiScore ? 'ai-match-badge' : ''}`}><Icon name="spark" size={13}/>{job.aiScore ? `${job.aiScore}% match` : job.match}</span><div className="card-actions"><button className="apply-small" onClick={applyFromListing}>{applied ? 'Applied' : hasApplicationLink ? 'Open application' : 'Apply'}</button><button aria-label="Save job" className={saved ? 'save saved' : 'save'} onClick={() => onSave(job.id)}><Icon name="bookmark" size={19}/></button></div></div></article>;
 }
 
 const isExpiredOpportunity = job => {
@@ -1036,7 +1041,7 @@ function ApplicationModal({ job, onClose, onSubmit, onAudit }) {
 }
 
 function AuthPage({ onSignIn, initialMode = 'signin', initialAccountType = 'candidate' }) {
-  const [mode, setMode] = useState(initialMode); const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [accountType, setAccountType] = useState(initialAccountType); const [accountTypeTouched, setAccountTypeTouched] = useState(initialAccountType === 'employer'); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState(initialMode); const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showPassword, setShowPassword] = useState(false); const [accountType, setAccountType] = useState(initialAccountType); const [accountTypeTouched, setAccountTypeTouched] = useState(initialAccountType === 'employer'); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
   useEffect(() => {
     if (initialMode) setMode(initialMode);
     if (initialAccountType) {
@@ -1045,7 +1050,7 @@ function AuthPage({ onSignIn, initialMode = 'signin', initialAccountType = 'cand
     }
   }, [initialMode, initialAccountType]);
   const submit = async event => { event.preventDefault(); setError(''); setLoading(true); try { if (email === 'sean@gmail.com' && password === 'sean@123') { onSignIn({ name: 'Sean Demo', email, accountType: accountTypeTouched ? accountType : 'candidate' }); return; } if (!supabase) throw new Error('Supabase is not configured for this deployment.'); const result = mode === 'signup' ? await supabase.auth.signUp({ email, password, options: { data: { full_name: name, role: accountType } } }) : await supabase.auth.signInWithPassword({ email, password }); if (result.error) throw result.error; const user = result.data.user; if (!user) throw new Error('Check your email to confirm your account, then sign in.'); if (mode === 'signup' && !result.data.session) { setError('Account created. Check your email to confirm it, then sign in.'); return; } if (mode === 'signup') { const { error: profileError } = await supabase.from('profiles').upsert({ id: user.id, full_name: name, role: accountType }); if (profileError) throw profileError; } const { data: storedProfile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).maybeSingle(); const finalAccountType = accountTypeTouched ? accountType : (storedProfile?.role || user.user_metadata?.role || accountType); if (mode === 'signin' && accountTypeTouched && storedProfile?.role !== finalAccountType) { await supabase.from('profiles').upsert({ id: user.id, full_name: storedProfile?.full_name || name, role: finalAccountType }); } onSignIn({ name: storedProfile?.full_name || user.user_metadata?.full_name || name || email.split('@')[0], email, accountType: finalAccountType }); } catch (err) { setError(err.message || 'Could not sign in.'); } finally { setLoading(false); } };
-  return <div className="auth-page"><section className="auth-art"><button className="brand"><span className="brand-mark">w</span><span>workly</span></button><div><span className="eyebrow">Work that moves you forward</span><h1>{accountType === 'employer' ? <>Hire early talent<br/><em>with confidence.</em></> : <>Start the career<br/><em>you deserve.</em></>}</h1><p>Use your email account to save your learning and opportunities securely.</p></div></section><section className="auth-form-wrap"><form className="auth-form" onSubmit={submit}><span className="eyebrow muted">Welcome to workly</span><h2>{mode === 'signin' ? 'Welcome back.' : 'Create your account.'}</h2>{error && <p className="auth-error">{error}</p>}<div className="account-type"><button type="button" className={accountType === 'candidate' ? 'selected' : ''} onClick={() => { setAccountType('candidate'); setAccountTypeTouched(true); }}>Job seeker</button><button type="button" className={accountType === 'employer' ? 'selected' : ''} onClick={() => { setAccountType('employer'); setAccountTypeTouched(true); }}>Employer</button></div>{mode === 'signup' && <label>Full name or company<input required value={name} onChange={e => setName(e.target.value)} /></label>}<label>Email address<input required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label><label>Password<input required type="password" minLength="6" value={password} onChange={e => setPassword(e.target.value)} /></label><button type="submit" disabled={loading}>{loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'} <Icon name="arrow" size={16}/></button><button type="button" className="auth-alt" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>{mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}</button></form></section></div>;
+  return <div className="auth-page"><section className="auth-art"><button className="brand"><span className="brand-mark">w</span><span>workly</span></button><div><span className="eyebrow">Work that moves you forward</span><h1>{accountType === 'employer' ? <>Hire early talent<br/><em>with confidence.</em></> : <>Start the career<br/><em>you deserve.</em></>}</h1><p>Use your email account to save your learning and opportunities securely.</p></div></section><section className="auth-form-wrap"><form className="auth-form" onSubmit={submit}><span className="eyebrow muted">Welcome to workly</span><h2>{mode === 'signin' ? 'Welcome back.' : 'Create your account.'}</h2>{error && <p className="auth-error">{error}</p>}<div className="account-type"><button type="button" className={accountType === 'candidate' ? 'selected' : ''} onClick={() => { setAccountType('candidate'); setAccountTypeTouched(true); }}>Job seeker</button><button type="button" className={accountType === 'employer' ? 'selected' : ''} onClick={() => { setAccountType('employer'); setAccountTypeTouched(true); }}>Employer</button></div>{mode === 'signup' && <label>Full name or company<input required value={name} onChange={e => setName(e.target.value)} /></label>}<label>Email address<input required type="email" value={email} onChange={e => setEmail(e.target.value)} /></label><label className="auth-password-label"><span>Password</span><div className="auth-password-wrap"><input required type={showPassword ? 'text' : 'password'} minLength="6" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /><button type="button" className="auth-password-toggle" onClick={() => setShowPassword(p => !p)} title={showPassword ? 'Hide password' : 'Show password'} aria-label={showPassword ? 'Hide password' : 'Show password'}><Icon name={showPassword ? 'eye-off' : 'eye'} size={18}/></button></div></label><button type="submit" disabled={loading}>{loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'} <Icon name="arrow" size={16}/></button><button type="button" className="auth-alt" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>{mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}</button></form></section></div>;
 }
 
 const suggestCategory = (title, description) => {
@@ -2654,8 +2659,15 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [infoModalTab, setInfoModalTab] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showAiOnboarding, setShowAiOnboarding] = useState(false);
   const [showPrepPrompt, setShowPrepPrompt] = useState(null);
-  const [profile, setProfile] = useState({ name: '', email: '', headline: 'Early-career professional', location: 'Harare, Zimbabwe' });
+  const [profile, setProfile] = useState(() => {
+    try {
+      const stored = localStorage.getItem('workly_ai_profile');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return { name: '', email: '', headline: 'Early-career professional', location: 'Harare, Zimbabwe', targetRole: '', experienceLevel: 'Junior (1–2 years)', skills: [], experience: '', education: '', workMode: 'Remote', bio: '', aiProfileCompleted: false };
+  });
   const [landingSearch, setLandingSearch] = useState(null);
   const [employerInitialPage, setEmployerInitialPage] = useState('Dashboard');
   const [authMode, setAuthMode] = useState('signin');
@@ -2692,6 +2704,17 @@ function App() {
     ...employerJobs,
     ...liveJobs,
   ], [employerJobs, liveJobs]);
+
+  const { matchedJobs: aiRankedJobs, runMatching } = useAIJobMatching({
+    candidate: profile,
+    jobs: liveJobList,
+    autoMatch: Boolean(profile?.aiProfileCompleted && profile?.skills?.length),
+  });
+
+  const effectiveJobList = useMemo(() => {
+    if (aiRankedJobs && aiRankedJobs.length > 0) return aiRankedJobs;
+    return liveJobList;
+  }, [aiRankedJobs, liveJobList]);
 
   const nav = ['Browse Employers', 'Find jobs', 'Early Career Programmes', 'My applications', 'ATS Checkers'];
   const notify = message => { setToast(message); setTimeout(() => setToast(''), 2300); };
@@ -2789,7 +2812,27 @@ function App() {
     </>
   );
 
-  if (!signedIn) return <AuthPage onSignIn={async details => { setProfile(current => ({ ...current, ...details })); setAccountType(details.accountType); setSignedIn(true); setActive(details.accountType === 'employer' ? 'Employer dashboard' : 'Discover'); if (details.accountType === 'employer' && supabase) { const { data: { user } } = await supabase.auth.getUser(); if (user) { try { setEmployerJobs(await loadEmployerJobs(user.id)); } catch (error) { console.error('Could not load employer jobs:', error.message); } } } }} initialMode={authMode} initialAccountType={authType} />;
+  if (!signedIn) return <AuthPage onSignIn={async details => {
+    let savedAi = null;
+    try {
+      const stored = localStorage.getItem('workly_ai_profile');
+      if (stored) savedAi = JSON.parse(stored);
+    } catch (e) {}
+    const merged = { ...profile, ...details, ...(savedAi || {}) };
+    setProfile(merged);
+    setAccountType(details.accountType);
+    setSignedIn(true);
+    setActive(details.accountType === 'employer' ? 'Employer dashboard' : 'Discover');
+    if (details.accountType === 'candidate' && (!savedAi || !savedAi.aiProfileCompleted)) {
+      setTimeout(() => setShowAiOnboarding(true), 450);
+    }
+    if (details.accountType === 'employer' && supabase) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        try { setEmployerJobs(await loadEmployerJobs(user.id)); } catch (error) { console.error('Could not load employer jobs:', error.message); }
+      }
+    }
+  }} initialMode={authMode} initialAccountType={authType} />;
 
   if (active === 'Employer dashboard') return (
     <div className="app-shell">
@@ -2818,7 +2861,7 @@ function App() {
   if (active === 'Early Career Programmes') return (
     <div className="app-shell">
       {topNav}
-      <main><BrowseJobs programmesOnly jobList={liveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/></main>
+      <main><BrowseJobs programmesOnly jobList={effectiveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/></main>
       <ApplicationModal job={selectedJob} onClose={() => setSelectedJob(null)} onSubmit={submitApplication} onAudit={() => { setSelectedJob(null); setActive('Resumly.ai'); }}/>
       <PostApplyPromptModal job={showPrepPrompt} onGoToPrep={() => { setShowPrepPrompt(null); setActive('PrepDashboard'); }} onDismiss={() => setShowPrepPrompt(null)} />
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
@@ -2829,12 +2872,12 @@ function App() {
     <div className="app-shell">
       {topNav}
       <main>
-        {active === 'Discover'          && <Discover setActive={setActive} notify={notify} onJobSearch={search => { setLandingSearch(search); setActive('Find jobs'); }} jobList={liveJobList} feedLoading={feedLoading} onPostJob={openPostJob} onOpenEmployerDashboard={openEmployerDashboard} onRegisterEmployer={openEmployerRegistration} onOpenInfoModal={setInfoModalTab}/>}
-        {active === 'Browse Employers'  && <BrowseEmployers setActive={setActive} jobList={liveJobList} notify={notify} setJobSearchQuery={query => setLandingSearch({ query })} onPostJob={openPostJob} onOpenEmployerDashboard={openEmployerDashboard}/>}
-        {active === 'Find jobs'         && <BrowseJobs jobList={liveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply} initialSearch={landingSearch} onClearInitialSearch={() => setLandingSearch(null)}/>}
-        {active === 'No Experience Needed' && <NoExpNeeded jobList={liveJobList} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
-        {active === 'Internships'       && <BrowseJobs jobList={liveJobList} internshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
-        {active === 'Apprenticeships'   && <BrowseJobs jobList={liveJobList} apprenticeshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
+        {active === 'Discover'          && <Discover setActive={setActive} notify={notify} onJobSearch={search => { setLandingSearch(search); setActive('Find jobs'); }} jobList={effectiveJobList} feedLoading={feedLoading} onPostJob={openPostJob} onOpenEmployerDashboard={openEmployerDashboard} onRegisterEmployer={openEmployerRegistration} onOpenInfoModal={setInfoModalTab}/>}
+        {active === 'Browse Employers'  && <BrowseEmployers setActive={setActive} jobList={effectiveJobList} notify={notify} setJobSearchQuery={query => setLandingSearch({ query })} onPostJob={openPostJob} onOpenEmployerDashboard={openEmployerDashboard}/>}
+        {active === 'Find jobs'         && <BrowseJobs jobList={effectiveJobList} feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply} initialSearch={landingSearch} onClearInitialSearch={() => setLandingSearch(null)}/>}
+        {active === 'No Experience Needed' && <NoExpNeeded jobList={effectiveJobList} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
+        {active === 'Internships'       && <BrowseJobs jobList={effectiveJobList} internshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
+        {active === 'Apprenticeships'   && <BrowseJobs jobList={effectiveJobList} apprenticeshipOnly feedSource={feedSource} feedMessage={feedMessage} feedLoading={feedLoading} saved={saved} applications={applications} onSave={save} onApply={apply}/>}
         {active === 'My applications'   && <Applications applications={applications} setActive={setActive}/>}
         {active === 'Resumly.ai'        && <Resumly setActive={setActive} notify={notify}/>}
         {active === 'PrepDashboard'     && <PrepDashboard setActive={setActive} />}
@@ -2844,6 +2887,32 @@ function App() {
       {profileOpen && <ProfileModal profile={profile} onClose={() => setProfileOpen(false)} onSave={async details => {
         try { const { data: { user } } = await supabase.auth.getUser(); if (!user) throw new Error('Please sign in again.'); const { error } = await supabase.from('profiles').update({ full_name: details.name, headline: details.headline, location: details.location }).eq('id', user.id); if (error) throw error; setProfile(current => ({ ...current, ...details })); setProfileOpen(false); notify('Profile settings saved'); } catch (error) { notify(error.message || 'Could not save profile settings'); }
       }}/>}
+      {showAiOnboarding && (
+        <AIProfileModal
+          isOpen={showAiOnboarding}
+          profile={profile}
+          onClose={() => setShowAiOnboarding(false)}
+          onSave={async (updatedProfile) => {
+            setProfile(updatedProfile);
+            try {
+              localStorage.setItem('workly_ai_profile', JSON.stringify(updatedProfile));
+              if (supabase) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  await supabase.from('profiles').update({
+                    full_name: updatedProfile.name,
+                    headline: updatedProfile.targetRole || updatedProfile.headline,
+                    location: updatedProfile.location,
+                  }).eq('id', user.id);
+                }
+              }
+            } catch (e) {}
+            setShowAiOnboarding(false);
+            notify('✨ AI Profile saved! Live job recommendations are now personalized for you.');
+            runMatching(updatedProfile, liveJobList);
+          }}
+        />
+      )}
       <FooterInfoModal activeTab={infoModalTab} onClose={() => setInfoModalTab(null)} notify={notify} />
       {toast && <div className="toast"><Icon name="check" size={17}/>{toast}</div>}
     </div>
