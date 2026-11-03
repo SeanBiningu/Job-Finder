@@ -89,44 +89,67 @@ export function AIProfileModal({ profile, isOpen, onClose, onSave }) {
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="application-modal ai-profile-modal">
-        <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
+    <div className="aip-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <aside className="aip-panel" role="dialog" aria-modal="true" aria-label="Set up your AI career profile">
 
-        <div className="ai-modal-header">
-          <span className="ai-badge">✨ AI Personalization</span>
-          <h2>Set Up Your AI Career Profile</h2>
-          <p>
-            Help Job.Workly’s integrated AI understand your target role and strengths.
-            This information directly powers your <strong>Job Suitability Scores (0–100%)</strong>,
-            <strong>Skills Gap Analysis</strong>, <strong>ATS CV Auditing</strong>, and <strong>AI Career Assistant coaching</strong>.
+        {/* ── Panel header ── */}
+        <div className="aip-header">
+          <div className="aip-header-top">
+            <span className="ai-badge">✨ AI Personalization</span>
+            <button type="button" className="aip-skip-btn" onClick={onClose} aria-label="Skip for now">
+              Skip for now
+            </button>
+          </div>
+          <h2 className="aip-title">Set Up Your AI Career Profile</h2>
+          <p className="aip-subtitle">
+            Help Workly's AI understand your goals — powering your{' '}
+            <strong>Job Suitability Scores</strong>, <strong>Skills Gap Analysis</strong>,{' '}
+            <strong>ATS CV Auditing</strong>, and <strong>AI Career Coaching</strong>.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="ai-form-grid">
-          {/* Target Role */}
-          <label className="ai-field-label">
-            Target Job Title / Career Goal *
-            <input
-              required
-              className="ai-input"
-              value={targetRole}
-              onChange={(e) => setTargetRole(e.target.value)}
-              placeholder="e.g. Junior Frontend Developer, Product Designer, Data Analyst"
-            />
-          </label>
+        {/* ── Scrollable form body ── */}
+        <form onSubmit={handleSubmit} className="aip-body">
 
-          {/* Experience Level */}
-          <div className="ai-field-label">
-            Current Experience Level
-            <div className="ai-pill-selector">
+          {/* Row 1: Target role + Experience level side-by-side */}
+          <div className="aip-row-two">
+            <label className="aip-field">
+              <span className="aip-label">Target Job Title / Career Goal <span className="aip-required">*</span></span>
+              <input
+                required
+                className="aip-input"
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
+                placeholder="e.g. Junior Frontend Developer"
+              />
+            </label>
+
+            <div className="aip-field">
+              <span className="aip-label">Preferred Work Mode</span>
+              <div className="aip-pill-row">
+                {WORK_MODES.map((mode) => (
+                  <button
+                    type="button"
+                    key={mode}
+                    className={`aip-pill ${workMode === mode ? 'aip-pill--active' : ''}`}
+                    onClick={() => setWorkMode(mode)}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Experience level */}
+          <div className="aip-field">
+            <span className="aip-label">Current Experience Level</span>
+            <div className="aip-pill-row aip-pill-row--wrap">
               {EXPERIENCE_LEVELS.map((lvl) => (
                 <button
                   type="button"
                   key={lvl}
-                  className={`ai-pill ${experienceLevel === lvl ? 'selected' : ''}`}
+                  className={`aip-pill ${experienceLevel === lvl ? 'aip-pill--active' : ''}`}
                   onClick={() => setExperienceLevel(lvl)}
                 >
                   {lvl}
@@ -135,17 +158,20 @@ export function AIProfileModal({ profile, isOpen, onClose, onSave }) {
             </div>
           </div>
 
-          {/* Skills Input & Quick-Add Chips */}
-          <label className="ai-field-label">
-            Core Skills & Tools * <small>(Type comma-separated or click quick chips below)</small>
+          {/* Skills */}
+          <div className="aip-field">
+            <span className="aip-label">
+              Core Skills &amp; Tools <span className="aip-required">*</span>{' '}
+              <span className="aip-hint">Type comma-separated or click chips below</span>
+            </span>
             <input
               required
-              className="ai-input"
+              className="aip-input"
               value={skillsText}
               onChange={handleSkillsTextChange}
-              placeholder="React, TypeScript, JavaScript, Tailwind CSS, Git"
+              placeholder="React, TypeScript, JavaScript, Git…"
             />
-            <div className="ai-skill-chips">
+            <div className="aip-chip-row">
               {SUGGESTED_SKILLS.map((skill) => {
                 const isSelected = skillsList.some(
                   (s) => s.toLowerCase() === skill.toLowerCase()
@@ -154,7 +180,7 @@ export function AIProfileModal({ profile, isOpen, onClose, onSave }) {
                   <button
                     type="button"
                     key={skill}
-                    className={`ai-skill-chip ${isSelected ? 'added' : ''}`}
+                    className={`aip-chip ${isSelected ? 'aip-chip--added' : ''}`}
                     onClick={() => toggleSkillChip(skill)}
                   >
                     {isSelected ? '✓ ' : '+ '}
@@ -163,71 +189,56 @@ export function AIProfileModal({ profile, isOpen, onClose, onSave }) {
                 );
               })}
             </div>
-          </label>
-
-          {/* Qualifications & Education */}
-          <label className="ai-field-label">
-            Education & Qualifications
-            <input
-              className="ai-input"
-              value={education}
-              onChange={(e) => setEducation(e.target.value)}
-              placeholder="e.g. BSc in Computer Science, Higher National Diploma, Self-Taught"
-            />
-          </label>
-
-          {/* Past Work / Projects */}
-          <label className="ai-field-label">
-            Experience Summary & Past Projects
-            <small>Mention internships, projects, or achievements the AI should consider</small>
-            <textarea
-              className="ai-textarea"
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
-              placeholder="e.g. Built responsive React dashboards with REST APIs; 6 months internship experience..."
-            />
-          </label>
-
-          {/* Preferred Work Mode */}
-          <div className="ai-field-label">
-            Preferred Work Mode
-            <div className="ai-pill-selector">
-              {WORK_MODES.map((mode) => (
-                <button
-                  type="button"
-                  key={mode}
-                  className={`ai-pill ${workMode === mode ? 'selected' : ''}`}
-                  onClick={() => setWorkMode(mode)}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Short Bio */}
-          <label className="ai-field-label">
-            Short Bio / Professional Statement
+          {/* Row 2: Education + Work mode side-by-side */}
+          <div className="aip-row-two">
+            <label className="aip-field">
+              <span className="aip-label">Education &amp; Qualifications</span>
+              <input
+                className="aip-input"
+                value={education}
+                onChange={(e) => setEducation(e.target.value)}
+                placeholder="e.g. BSc Computer Science, Self-Taught"
+              />
+            </label>
+
+            <label className="aip-field">
+              <span className="aip-label">Short Bio / Professional Statement</span>
+              <input
+                className="aip-input"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="e.g. Passionate junior dev looking to build impactful products."
+              />
+            </label>
+          </div>
+
+          {/* Experience summary */}
+          <label className="aip-field">
+            <span className="aip-label">
+              Experience Summary &amp; Past Projects{' '}
+              <span className="aip-hint">Internships, projects, or achievements</span>
+            </span>
             <textarea
-              className="ai-textarea"
-              style={{ minHeight: '60px' }}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="e.g. Passionate junior developer looking to build impactful digital products and grow in a supportive team."
+              className="aip-input aip-textarea"
+              value={experience}
+              onChange={(e) => setExperience(e.target.value)}
+              placeholder="e.g. Built responsive React dashboards with REST APIs; 6-month internship at…"
             />
           </label>
 
           {/* Actions */}
-          <div className="ai-modal-actions">
-            <button type="button" className="ai-cancel-btn" onClick={onClose}>
-              Cancel
+          <div className="aip-actions">
+            <button type="button" className="aip-btn-skip" onClick={onClose}>
+              Skip for now
             </button>
-            <button type="submit" className="ai-save-btn">
-              <span>Save & Enable AI Matching</span> →
+            <button type="submit" className="aip-btn-save">
+              Save &amp; Enable AI Matching →
             </button>
           </div>
         </form>
-      </div>
+      </aside>
     </div>
   );
 }
