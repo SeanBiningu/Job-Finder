@@ -2769,12 +2769,23 @@ function App() {
 
   const openPostJob = () => {
     setEmployerInitialPage('Post a Job');
-    setActive('Employer dashboard');
+    if (signedIn && accountType === 'employer') {
+      setActive('Employer dashboard');
+      return;
+    }
+    openEmployerRegistration();
   };
 
   const openEmployerDashboard = (targetPage = 'Dashboard') => {
-    setEmployerInitialPage(targetPage);
-    setActive('Employer dashboard');
+    // React passes a click event to handlers wired directly to onClick. Only
+    // accept an explicit page name here so the event is never rendered later.
+    const page = typeof targetPage === 'string' ? targetPage : 'Dashboard';
+    setEmployerInitialPage(page);
+    if (signedIn && accountType === 'employer') {
+      setActive('Employer dashboard');
+      return;
+    }
+    openEmployerRegistration();
   };
 
   const openEmployerRegistration = async () => {
@@ -2798,7 +2809,7 @@ function App() {
         <nav>{nav.map(item => <button key={item} className={active === item ? 'nav-item active' : 'nav-item'} onClick={() => setActive(item)}>{item === 'Browse Employers' ? 'Browse employers' : item === 'Early Career Programmes' ? 'Early career programmes' : item === 'ATS Checkers' ? 'ATS checker' : item}</button>)}</nav>
         <div className="top-actions">
           <LiveBadge source={feedSource} lastRefreshed={lastRefreshed} loading={feedLoading} onRefresh={refreshFeed}/>
-          <button className="employer-button" onClick={() => setActive('Employer dashboard')}><Icon name="briefcase" size={16}/>Employer dashboard</button>
+          <button className="employer-button" onClick={() => openEmployerDashboard()}><Icon name="briefcase" size={16}/>{accountType === 'employer' ? 'Employer dashboard' : 'For Employers'}</button>
           <div className="header-popover">
             <button className="avatar" onClick={() => setAccountOpen(!accountOpen)}>{profile.name.split(' ').map(word => word[0]).join('').slice(0,2)}</button>
             {accountOpen && <div className="account-menu"><div><b>{profile.name}</b><small>{profile.email}</small></div><button onClick={() => { setAccountOpen(false); setProfileOpen(true); }}>Profile settings</button><button className="logout" onClick={async () => { await supabase?.auth.signOut(); setSignedIn(false); setAccountOpen(false); }}>Log out</button></div>}
